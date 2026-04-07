@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="FamilyOS"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#D4A843"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyOS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0F1C2E;--navy2:#162233;--navy3:#1E2F44;--navy4:#253650;
+  --gold:#D4A843;--gold2:#E8C96A;
+  --text:#E8EDF3;--text2:#8FA8C8;--text3:#4A6A8A;
+  --green:#3DAA7A;--green2:#2D8A5A;
+  --red:#E05555;--red2:#C03535;
+  --blue:#4A88D4;--blue2:#2A68B4;
+  --purple:#9A6ADA;--amber:#D4943A;
+  --card:#1A2B3E;--card2:#243548;
+  --border:rgba(255,255,255,0.08);
+  --radius:10px;--radius2:14px;
+  --sidebar:240px;
+  --font:'Segoe UI',system-ui,sans-serif;
+}
+body{font-family:var(--font);background:var(--navy);color:var(--text);min-height:100vh;display:flex;overflow:hidden}
+#sidebar{width:var(--sidebar);background:var(--navy2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh;overflow-y:auto}
+.logo{padding:20px 18px 14px;border-bottom:1px solid var(--border)}
+.logo h1{font-size:22px;font-weight:700;color:var(--gold2);letter-spacing:-0.5px}
+.logo p{font-size:11px;color:var(--text3);margin-top:2px}
+.nav-section{padding:14px 12px 6px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-radius:8px;margin:1px 8px;transition:all .15s;font-size:13.5px;color:var(--text2);border:none;background:none;width:calc(100% - 16px);text-align:left}
+.nav-item:hover{background:var(--navy3);color:var(--text)}
+.nav-item.active{background:var(--navy4);color:var(--gold2)}
+.nav-icon{font-size:17px;width:20px;text-align:center;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:14px 12px;border-top:1px solid var(--border)}
+.sidebar-footer p{font-size:11px;color:var(--text3);text-align:center}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100vh}
+#topbar{background:var(--navy2);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#topbar h2{font-size:18px;font-weight:600;color:var(--text)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.date-badge{background:var(--navy4);color:var(--text2);font-size:12px;padding:5px 12px;border-radius:20px}
+#content{flex:1;overflow-y:auto;padding:24px 28px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius2);padding:18px 20px;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.card-title span{font-size:12px;font-weight:400;color:var(--text3)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+.kpi{background:var(--navy3);border-radius:var(--radius);padding:14px 16px;text-align:center}
+.kpi-val{font-size:28px;font-weight:700;color:var(--gold2);line-height:1}
+.kpi-label{font-size:11px;color:var(--text3);margin-top:5px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-family:var(--font);font-weight:500;transition:all .15s}
+.btn-gold{background:var(--gold);color:#1A1A1A}
+.btn-gold:hover{background:var(--gold2)}
+.btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-outline:hover{background:var(--navy4);color:var(--text)}
+.btn-red{background:var(--red2);color:#fff}
+.btn-green{background:var(--green2);color:#fff}
+.btn-green:hover{background:var(--green)}
+.btn-sm{padding:5px 11px;font-size:12px;border-radius:6px}
+.form-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:5px;flex:1;min-width:140px}
+.form-group label{font-size:12px;color:var(--text3);font-weight:500}
+.form-group input,.form-group select,.form-group textarea{background:var(--navy4);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:8px 12px;font-family:var(--font)}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--gold)}
+.form-group textarea{resize:vertical;min-height:70px}
+select option{background:var(--navy3)}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--navy3);color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:9px 12px;text-align:left}
+td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
+tr:hover td{background:var(--navy4)}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-gold{background:rgba(212,168,67,.15);color:var(--gold2)}
+.badge-green{background:rgba(61,170,122,.15);color:var(--green)}
+.badge-red{background:rgba(224,85,85,.15);color:var(--red)}
+.badge-blue{background:rgba(74,136,212,.15);color:var(--blue)}
+.badge-purple{background:rgba(154,106,218,.15);color:var(--purple)}
+.badge-gray{background:rgba(255,255,255,.08);color:var(--text2)}
+.progress-bar{height:7px;background:var(--navy4);border-radius:10px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:10px;transition:width .3s}
+.pf-gold{background:var(--gold)}
+.pf-green{background:var(--green)}
+.pf-blue{background:var(--blue)}
+.pf-red{background:var(--red)}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:var(--radius2);padding:24px;width:90%;max-width:560px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:600;color:var(--text);margin-bottom:18px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--navy3);padding:4px;border-radius:10px}
+.tab{padding:7px 16px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text3);border:none;background:transparent;font-family:var(--font);transition:all .15s}
+.tab.active{background:var(--navy4);color:var(--text);font-weight:500}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--green2);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+.empty{text-align:center;padding:36px 20px;color:var(--text3);font-size:14px}
+.stat-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.stat-row:last-child{border-bottom:none}
+.stat-label{flex:1;color:var(--text2)}
+.stat-value{font-weight:600;color:var(--text)}
+.verse-box{background:var(--navy4);border-left:3px solid var(--purple);padding:14px 16px;border-radius:0 8px 8px 0;font-style:italic;font-size:14px;color:var(--text2);margin-bottom:14px;line-height:1.7}
+.pilier-card{border-left:3px solid}
+.pilier-spirituel{border-color:var(--purple)}
+.pilier-education{border-color:var(--blue)}
+.pilier-finance{border-color:var(--gold)}
+.pilier-loisirs{border-color:var(--green)}
+.pilier-investissement{border-color:var(--amber)}
+.pilier-objectifs{border-color:var(--red)}
+.agenda-day{background:var(--navy3);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px}
+.agenda-day-title{font-size:12px;color:var(--gold2);font-weight:600;margin-bottom:8px}
+.agenda-item{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:13px;color:var(--text2)}
+.agenda-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.theme-preview{cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid transparent;transition:border .2s}
+.theme-preview:hover{border-color:var(--text3)}
+.theme-preview.selected{border-color:var(--gold)}
+</style>
+</head>
+<body>
+<nav id="sidebar">
+  <div class="logo">
+    <h1>🏠 FamilyOS</h1>
+    <p>Gestionnaire Familial · PMP</p>
+  </div>
+  <div class="nav-section">Principal</div>
+  <button class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span>Tableau de bord</button>
+  <div class="nav-section">Gestion</div>
+  <button class="nav-item" data-page="spirituel"><span class="nav-icon">🙏</span>Spiritualité</button>
+  <button class="nav-item" data-page="education"><span class="nav-icon">📚</span>Éducation & Formation</button>
+  <button class="nav-item" data-page="finances"><span class="nav-icon">💰</span>Finances</button>
+  <button class="nav-item" data-page="loisirs"><span class="nav-icon">🎉</span>Divertissements</button>
+  <button class="nav-item" data-page="investissements"><span class="nav-icon">📈</span>Investissements</button>
+  <button class="nav-item" data-page="objectifs"><span class="nav-icon">🎯</span>Objectifs</button>
+  <button class="nav-item" data-page="taches"><span class="nav-icon">✅</span>Tâches & Agenda</button>
+  <div class="nav-section">Système</div>
+  <button class="nav-item" data-page="membres"><span class="nav-icon">👥</span>Membres</button>
+  <button class="nav-item" data-page="parametres"><span class="nav-icon">⚙️</span>Paramètres</button>
+  <div class="sidebar-footer">
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Exportation</div>
+    <button class="btn btn-outline btn-sm" onclick="exporterPDF()" style="width:100%;margin-bottom:5px">📄 Rapport PDF</button>
+    <button class="btn btn-outline btn-sm" onclick="exporterExcel()" style="width:100%;margin-bottom:5px">📊 Classeur Excel</button>
+    <button class="btn btn-outline btn-sm" onclick="exportData()" style="width:100%;margin-bottom:5px">💾 Sauvegarde JSON</button>
+    <button class="btn btn-outline btn-sm" onclick="document.getElementById('importFile').click()" style="width:100%;margin-bottom:8px">⬆ Importer JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)"/>
+    <p>v2.0 · Données locales</p>
+  </div>
+</nav>
+<div id="main">
+  <div id="topbar">
+    <h2 id="page-title">Tableau de bord</h2>
+    <div class="topbar-right">
+      <div class="date-badge" id="date-badge"></div>
+      <button id="btn-install" onclick="installPWA()" class="btn btn-gold btn-sm" style="display:none;gap:6px">📲 Installer l'app</button>
+    </div>
+  </div>
+  <div id="content"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+var STORAGE_KEY = 'familyos_data_v2';
+function loadData() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultData(); }
+  catch(e) { return defaultData(); }
+}
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }
+function defaultData() {
+  return {
+    famille: {nom:'Ma Famille', membres:[]},
+    spirituel: {prieres:[], versets:[], rencontres:[], meditations:[]},
+    education: {programmes:[], cours:[]},
+    finances: {transactions:[], budget:[]},
+    loisirs: {activites:[], vacances:[]},
+    investissements: {comptes:[]},
+    objectifs: {projets:[]},
+    taches: {items:[], agenda:[]},
+    parametres: {theme:'sombre', couleurAccent:'#D4A843', couleurFond:'#0F1C2E', couleurSidebar:'#162233', couleurCarte:'#1A2B3E',
+      emailjs_public_key:'', emailjs_service_id:'', emailjs_template_id:'', emailjs_actif:false}
+  };
+}
+var DB = loadData();
+
+// ─── THEME ────────────────────────────────────────────────────────────────────
+function hexToRgb(h) {
+  var r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);
+  return r ? {r:parseInt(r[1],16), g:parseInt(r[2],16), b:parseInt(r[3],16)} : null;
+}
+function lighten(hex, pct) {
+  var c = hexToRgb(hex);
+  if (!c) return hex;
+  var f = pct/100;
+  return 'rgb(' + Math.min(255,Math.round(c.r+(255-c.r)*f)) + ',' + Math.min(255,Math.round(c.g+(255-c.g)*f)) + ',' + Math.min(255,Math.round(c.b+(255-c.b)*f)) + ')';
+}
+function appliquerTheme() {
+  var p = DB.parametres || {};
+  var r = document.documentElement.style;
+  if (p.couleurFond) {
+    r.setProperty('--navy', p.couleurFond);
+    r.setProperty('--navy3', lighten(p.couleurFond, 8));
+    r.setProperty('--navy4', lighten(p.couleurFond, 14));
+  }
+  if (p.couleurSidebar) r.setProperty('--navy2', p.couleurSidebar);
+  if (p.couleurAccent) { r.setProperty('--gold', p.couleurAccent); r.setProperty('--gold2', p.couleurAccent); }
+  if (p.couleurCarte) r.setProperty('--card', p.couleurCarte);
+}
+appliquerTheme();
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+var PAGES = {dashboard:pgDashboard, spirituel:pgSpirituels, education:pgEducation, finances:pgFinances, loisirs:pgLoisirs, investissements:pgInvestissements, objectifs:pgObjectifs, taches:pgTaches, membres:pgMembres, parametres:pgParametres};
+var TITLES = {dashboard:'Tableau de bord', spirituel:'Spiritualité', education:'Éducation & Formation', finances:'Finances', loisirs:'Divertissements', investissements:'Investissements', objectifs:'Objectifs (PMP)', taches:'Tâches & Agenda', membres:'Membres de la famille', parametres:'Paramètres'};
+var currentPage = 'dashboard';
+
+document.querySelectorAll('.nav-item').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentPage = btn.dataset.page;
+    document.getElementById('page-title').textContent = TITLES[currentPage];
+    render();
+  });
+});
+
+function render() {
+  document.getElementById('content').innerHTML = PAGES[currentPage]();
+  attachEvents();
+}
+
+// ─── DATE ─────────────────────────────────────────────────────────────────────
+document.getElementById('date-badge').textContent = new Date().toLocaleDateString('fr-CA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function toast(msg, color) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = color || 'var(--green2)';
+  t.classList.add('show'); setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+function uid() { return Math.random().toString(36).slice(2,9); }
+function fmtMoney(n) { return Number(n).toLocaleString('fr-CA',{style:'currency',currency:'CAD',minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtDate(d) { if (!d) return ''; try { return new Date(d+'T12:00:00').toLocaleDateString('fr-CA'); } catch(e) { return d; } }
+function progressColor(p) { if (p >= 75) return 'pf-green'; if (p >= 40) return 'pf-gold'; return 'pf-blue'; }
+function priorityBadge(p) { var m = {Haute:'badge-red',Moyenne:'badge-gold',Basse:'badge-gray'}; return '<span class="badge '+(m[p]||'badge-gray')+'">'+p+'</span>'; }
+function statutBadge(s) { var m = {'À faire':'badge-gray','En cours':'badge-blue','Terminé':'badge-green','En attente':'badge-gold','Bloqué':'badge-red'}; return '<span class="badge '+(m[s]||'badge-gray')+'">'+s+'</span>'; }
+function getMembres() { return DB.famille.membres || []; }
+function avatarColor(nom) { var colors = ['#4A88D4','#3DAA7A','#D4A843','#9A6ADA','#D85A30','#E05555','#2A68B4']; return colors[nom ? nom.charCodeAt(0) % colors.length : 0]; }
+function initiales(m) { return ((m.prenom||'?')[0] + (m.nom||' ')[0]).toUpperCase(); }
+function membreOptions(selected) {
+  var html = '<option value="">— Non assigné —</option>';
+  getMembres().forEach(function(m) {
+    html += '<option value="'+m.prenom+'"'+(m.prenom===selected?' selected':'')+'>'+m.prenom+' '+(m.nom||'')+'</option>';
+  });
+  return html;
+}
+function navTo(p) { document.querySelector('[data-page="'+p+'"]').click(); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function switchTab(evt, target) {
+  var prefix = target.slice(0,3);
+  evt.target.closest('.tabs').querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  evt.target.classList.add('active');
+  document.querySelectorAll('[id^="'+prefix+'-"]').forEach(function(el) {
+    el.style.display = el.id === target ? '' : 'none';
+  });
+}
+function attachEvents() {
+  document.querySelectorAll('.modal-bg').forEach(function(m) {
+    m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('open'); });
+  });
+}
+function exportData() {
+  var blob = new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'FamilyOS_backup_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  toast('Données exportées ✓');
+}
+function importData(evt) {
+  var f = evt.target.files[0]; if (!f) return;
+  var r = new FileReader();
+  r.onload = function(e) {
+    try { DB = JSON.parse(e.target.result); saveData(); render(); toast('Données importées ✓'); }
+    catch(err) { toast('Fichier invalide','var(--red2)'); }
+  };
+  r.readAsText(f);
+}
+function supprimerItem(module, col, id) {
+  if (!confirm('Supprimer cet élément?')) return;
+  DB[module][col] = DB[module][col].filter(function(i) { return i.id !== id; });
+  saveData(); render(); toast('Supprimé ✓','var(--red2)');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: TABLEAU DE BORD
+// ═══════════════════════════════════════════════════════════════════════════
+function pgDashboard() {
+  var taches = DB.taches.items;
+  var aTermine = taches.filter(function(t) { return t.statut === 'Terminé'; }).length;
+  var aFaire = taches.filter(function(t) { return t.statut !== 'Terminé'; }).length;
+  var projets = DB.objectifs.projets;
+  var pctMoy = projets.length ? Math.round(projets.reduce(function(a,p) { return a+Number(p.pct||0); },0)/projets.length) : 0;
+  var totalInvest = DB.investissements.comptes.reduce(function(a,c) { return a+Number(c.solde||0); },0);
+  var revenus = DB.finances.transactions.filter(function(t) { return t.type==='Revenu'; }).reduce(function(a,t) { return a+Number(t.montant||0); },0);
+  var depenses = DB.finances.transactions.filter(function(t) { return t.type==='Dépense'; }).reduce(function(a,t) { return a+Number(t.montant||0); },0);
+  var versetActuel = DB.spirituel.versets.find(function(v) { return v.actuel; }) || DB.spirituel.versets[0];
+  var lundi = new Date().getDay()===1 ? '🟢 Aujourd\'hui!' : '📅 Lundi prochain';
+  var vendredi = new Date().getDay()===5 ? '🟢 Aujourd\'hui!' : '📅 Vendredi prochain';
+  var urgentes = taches.filter(function(t) { return t.priorite==='Haute' && t.statut!=='Terminé'; }).slice(0,4);
+  var recents = projets.filter(function(p) { return p.statut!=='Terminé'; }).slice(0,3);
+  var html = '';
+  html += '<div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">';
+  html += kpi(aFaire,'Tâches actives','var(--text)') + kpi(aTermine,'Tâches terminées','var(--green)') + kpi(projets.length,'Objectifs','var(--blue)') + kpi(pctMoy+'%','Avancement moyen','var(--amber)') + kpi(fmtMoney(totalInvest),'Total investissements','var(--gold)') + kpi(fmtMoney(revenus-depenses),'Solde financier',revenus-depenses>=0?'var(--green)':'var(--red)');
+  html += '</div>';
+  html += '<div class="grid2">';
+  html += '<div>';
+  html += '<div class="card"><div class="card-title">🗓️ Rappels spirituels</div>';
+  html += '<div class="stat-row"><div class="stat-label">🙏 Rencontre de prière</div><div>'+lundi+'</div></div>';
+  html += '<div class="stat-row"><div class="stat-label">🕊️ Méditation</div><div>'+vendredi+'</div></div>';
+  if (versetActuel) {
+    html += '<div style="margin-top:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">VERSET EN COURS</div>';
+    html += '<div class="verse-box">"'+versetActuel.texte+'"<br><small style="font-size:11px">'+(versetActuel.ref||'')+'</small></div></div>';
+  } else {
+    html += '<div class="empty" style="padding:16px">Aucun verset. <button class="btn btn-sm btn-outline" onclick="navTo(\'spirituel\')">Ajouter →</button></div>';
+  }
+  html += '</div>';
+  html += '<div class="card"><div class="card-title">⚡ Tâches urgentes</div>';
+  if (urgentes.length) {
+    urgentes.forEach(function(t) {
+      html += '<div class="stat-row"><div class="stat-label">'+t.titre+'</div><div>'+statutBadge(t.statut)+'</div></div>';
+    });
+  } else { html += '<div class="empty" style="padding:12px">Aucune tâche urgente 🎉</div>'; }
+  html += '<button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="navTo(\'taches\')">Voir toutes →</button></div>';
+  html += '</div>';
+  html += '<div>';
+  html += '<div class="card"><div class="card-title">🎯 Objectifs en cours <span>'+recents.length+' actifs</span></div>';
+  if (recents.length) {
+    recents.forEach(function(p) {
+      html += '<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:13px;font-weight:500">'+p.nom+'</span><span style="font-size:12px;color:var(--text3)">'+(p.pct||0)+'%</span></div>';
+      html += '<div class="progress-bar"><div class="progress-fill '+progressColor(p.pct||0)+'" style="width:'+(p.pct||0)+'%"></div></div>';
+      html += '<div style="font-size:11px;color:var(--text3);margin-top:3px">'+(p.responsable||'')+' · Échéance: '+fmtDate(p.echeance)+'</div></div>';
+    });
+  } else {
+    html += '<div class="empty">Aucun objectif actif.<br><button class="btn btn-sm btn-gold" onclick="navTo(\'objectifs\')" style="margin-top:8px">Créer un objectif →</button></div>';
+  }
+  html += '</div>';
+  html += '<div class="card"><div class="card-title">💰 Résumé financier</div>';
+  html += '<div class="stat-row"><div class="stat-label">Revenus</div><div class="stat-value" style="color:var(--green)">'+fmtMoney(revenus)+'</div></div>';
+  html += '<div class="stat-row"><div class="stat-label">Dépenses</div><div class="stat-value" style="color:var(--red)">'+fmtMoney(depenses)+'</div></div>';
+  html += '<div class="stat-row"><div class="stat-label">Épargne nette</div><div class="stat-value" style="color:'+(revenus-depenses>=0?'var(--green)':'var(--red)')+'">'+fmtMoney(revenus-depenses)+'</div></div>';
+  html += '<button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="navTo(\'finances\')">Détails →</button></div>';
+  html += '</div>';
+  html += '</div>';
+  return html;
+}
+function kpi(val, label, color) {
+  return '<div class="kpi"><div class="kpi-val" style="color:'+color+'">'+(val||0)+'</div><div class="kpi-label">'+label+'</div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: SPIRITUALITÉ
+// ═══════════════════════════════════════════════════════════════════════════
+function pgSpirituels() {
+  var s = DB.spirituel;
+  var html = '';
+  html += '<div class="tabs"><button class="tab active" onclick="switchTab(event,\'sp-priere\')">🙏 Prières</button><button class="tab" onclick="switchTab(event,\'sp-versets\')">📖 Versets</button><button class="tab" onclick="switchTab(event,\'sp-rencontres\')">👥 Rencontres</button><button class="tab" onclick="switchTab(event,\'sp-meditation\')">🕊️ Méditation</button></div>';
+  // Prières
+  html += '<div id="sp-priere">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Liste de prières</h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-priere\')">+ Ajouter</button></div>';
+  if (s.prieres.length) {
+    s.prieres.forEach(function(p) {
+      html += '<div class="card pilier-card pilier-spirituel" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:500;font-size:14px">'+p.sujet+'</div><div style="font-size:12px;color:var(--text3);margin-top:3px">Pour: '+(p.pour||'Famille')+' · '+fmtDate(p.date)+'</div>'+(p.reponse?'<div style="font-size:12px;color:var(--green);margin-top:4px">✅ Réponse: '+p.reponse+'</div>':'')+'</div><div style="display:flex;gap:6px">'+(!p.reponse?'<button class="btn btn-sm btn-green" onclick="reponderPriere(\''+p.id+'\')">Répondue</button>':'<span class="badge badge-green">Répondue</span>')+'<button class="btn btn-sm btn-outline" onclick="supprimerItem(\'spirituel\',\'prieres\',\''+p.id+'\')">✕</button></div></div></div>';
+    });
+  } else { html += '<div class="empty">Aucune prière enregistrée.</div>'; }
+  html += '</div>';
+  // Versets
+  html += '<div id="sp-versets" style="display:none">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Apprentissage de versets</h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-verset\')">+ Ajouter</button></div>';
+  if (s.versets.length) {
+    s.versets.forEach(function(v) {
+      html += '<div class="card pilier-card pilier-spirituel" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><div style="flex:1"><div style="font-size:12px;color:var(--purple);font-weight:600;margin-bottom:4px">'+v.ref+'</div><div style="font-style:italic;font-size:14px;color:var(--text2)">"'+v.texte+'"</div><div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3)"><span>Mémorisation</span><span>'+(v.pct||0)+'%</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+(v.pct||0)+'%;background:var(--purple)"></div></div></div>'+(v.actuel?'<span class="badge badge-purple" style="margin-top:6px">Verset actuel</span>':'')+'</div><div style="display:flex;flex-direction:column;gap:4px;margin-left:12px"><button class="btn btn-sm btn-outline" onclick="setVersetActuel(\''+v.id+'\')">⭐</button><button class="btn btn-sm btn-outline" onclick="supprimerItem(\'spirituel\',\'versets\',\''+v.id+'\')">✕</button></div></div></div>';
+    });
+  } else { html += '<div class="empty">Aucun verset ajouté.</div>'; }
+  html += '</div>';
+  // Rencontres
+  html += '<div id="sp-rencontres" style="display:none">';
+  html += '<div class="card" style="margin-bottom:14px"><div class="card-title">📅 Rencontres de prière (Lundi)</div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;color:var(--text2)">Enregistrez vos rencontres du lundi</div><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-rencontre\')">+ Rencontre</button></div>';
+  if (s.rencontres.length) {
+    html += '<div class="table-wrap"><table><tr><th>Date</th><th>Présents</th><th>Thème</th><th>Notes</th></tr>';
+    s.rencontres.forEach(function(r) { html += '<tr><td>'+fmtDate(r.date)+'</td><td>'+(r.presents||'-')+'</td><td>'+(r.theme||'-')+'</td><td>'+(r.notes||'-')+'</td></tr>'; });
+    html += '</table></div>';
+  } else { html += '<div class="empty">Aucune rencontre enregistrée.</div>'; }
+  html += '</div></div>';
+  // Méditation
+  html += '<div id="sp-meditation" style="display:none">';
+  html += '<div class="card"><div class="card-title">🕊️ Méditations (Vendredi)</div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:13px;color:var(--text2)">Suivi des sessions de méditation</span><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-meditation\')">+ Session</button></div>';
+  if (s.meditations.length) {
+    s.meditations.forEach(function(m) {
+      html += '<div style="border-bottom:1px solid var(--border);padding:10px 0"><div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:500">'+(m.theme||'Méditation')+'</span><span style="font-size:12px;color:var(--text3)">'+fmtDate(m.date)+' · '+(m.duree||'?')+' min</span></div>'+(m.notes?'<div style="font-size:12px;color:var(--text2);margin-top:4px">'+m.notes+'</div>':'')+'</div>';
+    });
+  } else { html += '<div class="empty">Aucune session enregistrée.</div>'; }
+  html += '</div></div>';
+  // Modals
+  html += modalSpirituels();
+  return html;
+}
+function modalSpirituels() {
+  return '<div class="modal-bg" id="modal-priere"><div class="modal"><h3>🙏 Nouvelle prière</h3><div class="form-row"><div class="form-group"><label>Sujet de prière</label><input id="p-sujet" placeholder="Santé, direction..."/></div></div><div class="form-row"><div class="form-group"><label>Pour qui</label><input id="p-pour" placeholder="Famille, enfant..."/></div><div class="form-group"><label>Date</label><input type="date" id="p-date"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-priere\')">Annuler</button><button class="btn btn-gold" onclick="ajouterPriere()">Enregistrer</button></div></div></div>'
+  +'<div class="modal-bg" id="modal-verset"><div class="modal"><h3>📖 Nouveau verset</h3><div class="form-row"><div class="form-group"><label>Référence</label><input id="v-ref" placeholder="Jean 3:16"/></div></div><div class="form-row"><div class="form-group"><label>Texte</label><textarea id="v-texte" placeholder="Texte du verset..."></textarea></div></div><div class="form-row"><div class="form-group"><label>% mémorisé</label><input type="number" id="v-pct" min="0" max="100" value="0"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-verset\')">Annuler</button><button class="btn btn-gold" onclick="ajouterVerset()">Enregistrer</button></div></div></div>'
+  +'<div class="modal-bg" id="modal-rencontre"><div class="modal"><h3>👥 Rencontre de prière</h3><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="r-date"/></div><div class="form-group"><label>Présents</label><input id="r-presents" placeholder="Noms"/></div></div><div class="form-row"><div class="form-group"><label>Thème</label><input id="r-theme" placeholder="Thème principal"/></div></div><div class="form-row"><div class="form-group"><label>Notes</label><textarea id="r-notes"></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-rencontre\')">Annuler</button><button class="btn btn-gold" onclick="ajouterRencontre()">Enregistrer</button></div></div></div>'
+  +'<div class="modal-bg" id="modal-meditation"><div class="modal"><h3>🕊️ Méditation</h3><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="m-date"/></div><div class="form-group"><label>Durée (min)</label><input type="number" id="m-duree" value="30"/></div></div><div class="form-row"><div class="form-group"><label>Thème / Passage</label><input id="m-theme" placeholder="Passage ou thème"/></div></div><div class="form-row"><div class="form-group"><label>Notes</label><textarea id="m-notes"></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-meditation\')">Annuler</button><button class="btn btn-gold" onclick="ajouterMeditation()">Enregistrer</button></div></div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: EDUCATION
+// ═══════════════════════════════════════════════════════════════════════════
+function pgEducation() {
+  var e = DB.education;
+  var html = '<div class="tabs"><button class="tab active" onclick="switchTab(event,\'ed-programmes\')">📋 Programmes</button><button class="tab" onclick="switchTab(event,\'ed-cours\')">🎓 Cours & Formations</button></div>';
+  html += '<div id="ed-programmes"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Programmes d\'apprentissage</h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-programme\')">+ Ajouter</button></div>';
+  if (e.programmes.length) {
+    e.programmes.forEach(function(p) {
+      html += '<div class="card pilier-card pilier-education" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:600;font-size:14px">'+p.nom+'</span><span class="badge '+(p.type==='Enfant'?'badge-blue':'badge-purple')+'">'+p.type+'</span>'+statutBadge(p.statut)+'</div><div style="font-size:12px;color:var(--text3)">Pour: '+(p.membre||'?')+' · '+(p.matiere||'')+' · Niveau: '+(p.niveau||'-')+'</div><div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3)"><span>Progression</span><span>'+(p.pct||0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+progressColor(p.pct||0)+'" style="width:'+(p.pct||0)+'%"></div></div></div></div><div style="margin-left:12px;display:flex;flex-direction:column;gap:4px"><button class="btn btn-sm btn-outline" onclick="editPctItem(\'education\',\'programmes\',\''+p.id+'\')">% Màj</button><button class="btn btn-sm btn-outline" onclick="supprimerItem(\'education\',\'programmes\',\''+p.id+'\')">✕</button></div></div></div>';
+    });
+  } else { html += '<div class="empty">Aucun programme. <button class="btn btn-sm btn-gold" onclick="openModal(\'modal-programme\')" style="margin-top:8px">Commencer →</button></div>'; }
+  html += '</div>';
+  html += '<div id="ed-cours" style="display:none"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Cours & Formations</h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-cours\')">+ Ajouter</button></div>';
+  if (e.cours.length) {
+    html += '<div class="table-wrap"><table><tr><th>Titre</th><th>Membre</th><th>Plateforme</th><th>Statut</th><th>Coût</th><th></th></tr>';
+    e.cours.forEach(function(c) { html += '<tr><td style="font-weight:500">'+c.titre+'</td><td>'+(c.membre||'-')+'</td><td>'+(c.plateforme||'-')+'</td><td>'+statutBadge(c.statut)+'</td><td>'+(c.cout?fmtMoney(c.cout):'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="supprimerItem(\'education\',\'cours\',\''+c.id+'\')">✕</button></td></tr>'; });
+    html += '</table></div>';
+  } else { html += '<div class="empty">Aucun cours enregistré.</div>'; }
+  html += '</div>';
+  html += '<div class="modal-bg" id="modal-programme"><div class="modal"><h3>📋 Nouveau programme</h3><div class="form-row"><div class="form-group"><label>Nom du programme</label><input id="pg-nom" placeholder="Ex: Lecture niveau 3"/></div><div class="form-group"><label>Pour</label><input id="pg-membre" placeholder="Prénom"/></div></div><div class="form-row"><div class="form-group"><label>Type</label><select id="pg-type"><option>Enfant</option><option>Parent</option></select></div><div class="form-group"><label>Matière</label><input id="pg-matiere" placeholder="Maths, Lecture..."/></div></div><div class="form-row"><div class="form-group"><label>Niveau</label><input id="pg-niveau" placeholder="Grade 3, Débutant..."/></div><div class="form-group"><label>Statut</label><select id="pg-statut"><option>À faire</option><option>En cours</option><option>Terminé</option></select></div></div><div class="form-row"><div class="form-group"><label>% Complétion</label><input type="number" id="pg-pct" value="0" min="0" max="100"/></div><div class="form-group"><label>Échéance</label><input type="date" id="pg-echeance"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-programme\')">Annuler</button><button class="btn btn-gold" onclick="ajouterProgramme()">Enregistrer</button></div></div></div>'
+  + '<div class="modal-bg" id="modal-cours"><div class="modal"><h3>🎓 Nouveau cours</h3><div class="form-row"><div class="form-group"><label>Titre</label><input id="c-titre" placeholder="Titre du cours"/></div><div class="form-group"><label>Membre</label><input id="c-membre" placeholder="Prénom"/></div></div><div class="form-row"><div class="form-group"><label>Plateforme</label><input id="c-plateforme" placeholder="Udemy, École..."/></div><div class="form-group"><label>Coût ($)</label><input type="number" id="c-cout" placeholder="0"/></div></div><div class="form-row"><div class="form-group"><label>Statut</label><select id="c-statut"><option>À faire</option><option>En cours</option><option>Terminé</option></select></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-cours\')">Annuler</button><button class="btn btn-gold" onclick="ajouterCours()">Enregistrer</button></div></div></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: FINANCES
+// ═══════════════════════════════════════════════════════════════════════════
+function pgFinances() {
+  var txs = DB.finances.transactions;
+  var revenus = txs.filter(function(t){return t.type==='Revenu';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+  var depenses = txs.filter(function(t){return t.type==='Dépense';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+  var cats = [];
+  txs.filter(function(t){return t.type==='Dépense';}).forEach(function(t){if(cats.indexOf(t.categorie)<0)cats.push(t.categorie);});
+  var html = '<div class="grid4" style="margin-bottom:20px">';
+  html += kpi(fmtMoney(revenus),'Revenus','var(--green)') + kpi(fmtMoney(depenses),'Dépenses','var(--red)') + kpi(fmtMoney(revenus-depenses),'Solde net',revenus-depenses>=0?'var(--green)':'var(--red)') + kpi(txs.length,'Transactions','var(--blue)');
+  html += '</div><div class="grid2">';
+  html += '<div class="card"><div class="card-title">📊 Dépenses par catégorie</div>';
+  if (cats.length) {
+    cats.forEach(function(cat) {
+      var total = txs.filter(function(t){return t.categorie===cat&&t.type==='Dépense';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+      var pct = depenses ? Math.round(total/depenses*100) : 0;
+      html += '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>'+(cat||'Autre')+'</span><span style="color:var(--red);font-weight:600">'+fmtMoney(total)+'</span></div><div class="progress-bar"><div class="progress-fill pf-red" style="width:'+pct+'%"></div></div><div style="font-size:11px;color:var(--text3);text-align:right">'+pct+'%</div></div>';
+    });
+  } else { html += '<div class="empty">Aucune transaction.</div>'; }
+  html += '</div>';
+  html += '<div class="card"><div class="card-title">💰 Budget mensuel <button class="btn btn-outline btn-sm" onclick="openModal(\'modal-budget\')">+ Budget</button></div>';
+  if (DB.finances.budget.length) {
+    DB.finances.budget.forEach(function(b) {
+      var dep = txs.filter(function(t){return t.categorie===b.categorie&&t.type==='Dépense';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+      var pct = b.montant ? Math.round(dep/b.montant*100) : 0;
+      html += '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>'+b.categorie+'</span><span style="color:'+(pct>100?'var(--red)':'var(--text2)')+'">'+fmtMoney(dep)+' / '+fmtMoney(b.montant)+'</span></div><div class="progress-bar"><div class="progress-fill '+(pct>100?'pf-red':'pf-blue')+'" style="width:'+Math.min(pct,100)+'%"></div></div></div>';
+    });
+  } else { html += '<div class="empty">Aucun budget configuré.</div>'; }
+  html += '</div></div>';
+  html += '<div class="card"><div class="card-title">📋 Transactions <button class="btn btn-gold btn-sm" onclick="openModal(\'modal-transaction\')">+ Ajouter</button></div>';
+  if (txs.length) {
+    var sorted = txs.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+    html += '<div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th>Catégorie</th><th>Type</th><th>Montant</th><th></th></tr>';
+    sorted.forEach(function(t) {
+      html += '<tr><td>'+fmtDate(t.date)+'</td><td>'+(t.desc||'-')+'</td><td>'+(t.categorie||'-')+'</td><td><span class="badge '+(t.type==='Revenu'?'badge-green':'badge-red')+'">'+t.type+'</span></td><td style="font-weight:600;color:'+(t.type==='Revenu'?'var(--green)':'var(--red)')+'">'+fmtMoney(t.montant)+'</td><td><button class="btn btn-sm btn-outline" onclick="supprimerFinance(\'transactions\',\''+t.id+'\')">✕</button></td></tr>';
+    });
+    html += '</table></div>';
+  } else { html += '<div class="empty">Aucune transaction.</div>'; }
+  html += '</div>';
+  html += '<div class="modal-bg" id="modal-transaction"><div class="modal"><h3>💰 Nouvelle transaction</h3><div class="form-row"><div class="form-group"><label>Type</label><select id="tx-type"><option>Dépense</option><option>Revenu</option></select></div><div class="form-group"><label>Montant ($)</label><input type="number" id="tx-montant" placeholder="0.00"/></div></div><div class="form-row"><div class="form-group"><label>Description</label><input id="tx-desc" placeholder="Description"/></div><div class="form-group"><label>Catégorie</label><input id="tx-cat" placeholder="Épicerie, Loyer..."/></div></div><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="tx-date"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-transaction\')">Annuler</button><button class="btn btn-gold" onclick="ajouterTransaction()">Enregistrer</button></div></div></div>'
+  + '<div class="modal-bg" id="modal-budget"><div class="modal"><h3>📊 Ligne de budget</h3><div class="form-row"><div class="form-group"><label>Catégorie</label><input id="bg-cat" placeholder="Épicerie, Transport..."/></div><div class="form-group"><label>Budget mensuel ($)</label><input type="number" id="bg-montant" placeholder="500"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-budget\')">Annuler</button><button class="btn btn-gold" onclick="ajouterBudget()">Enregistrer</button></div></div></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: LOISIRS
+// ═══════════════════════════════════════════════════════════════════════════
+function pgLoisirs() {
+  var l = DB.loisirs;
+  var html = '<div class="tabs"><button class="tab active" onclick="switchTab(event,\'lo-activites\')">🎉 Activités</button><button class="tab" onclick="switchTab(event,\'lo-vacances\')">✈️ Vacances</button></div>';
+  html += '<div id="lo-activites"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Activités & Moments de qualité</h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-activite\')">+ Planifier</button></div>';
+  if (l.activites.length) {
+    l.activites.forEach(function(a) {
+      html += '<div class="card pilier-card pilier-loisirs" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600;font-size:14px">'+a.titre+'</div><div style="font-size:12px;color:var(--text3);margin-top:2px">'+(a.type||'')+' · '+fmtDate(a.date)+' · '+(a.lieu||'')+'</div>'+(a.budget?'<div style="font-size:12px;color:var(--gold);margin-top:2px">Budget: '+fmtMoney(a.budget)+'</div>':'')+'</div><div style="display:flex;gap:6px">'+statutBadge(a.statut)+'<button class="btn btn-sm btn-outline" onclick="supprimerItem(\'loisirs\',\'activites\',\''+a.id+'\')">✕</button></div></div></div>';
+    });
+  } else { html += '<div class="empty">Aucune activité planifiée.</div>'; }
+  html += '</div>';
+  html += '<div id="lo-vacances" style="display:none"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Projets de vacances</h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-vacance\')">+ Planifier</button></div>';
+  if (l.vacances.length) {
+    l.vacances.forEach(function(v) {
+      html += '<div class="card" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:16px;font-weight:600">'+v.destination+'</div><div style="font-size:12px;color:var(--text3);margin-top:3px">'+fmtDate(v.depart)+' → '+fmtDate(v.retour)+' · '+(v.type||'')+'</div><div style="font-size:13px;color:var(--gold);margin-top:4px">Budget: '+fmtMoney(v.budget||0)+'</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">'+statutBadge(v.statut)+'<button class="btn btn-sm btn-outline" onclick="supprimerItem(\'loisirs\',\'vacances\',\''+v.id+'\')">✕</button></div></div></div>';
+    });
+  } else { html += '<div class="empty">Aucune vacance planifiée.</div>'; }
+  html += '</div>';
+  html += '<div class="modal-bg" id="modal-activite"><div class="modal"><h3>🎉 Nouvelle activité</h3><div class="form-row"><div class="form-group"><label>Titre</label><input id="ac-titre" placeholder="Soirée film en famille..."/></div><div class="form-group"><label>Type</label><select id="ac-type"><option>Bien-être</option><option>Moment de qualité</option><option>Sortie</option><option>Sport</option><option>Culture</option><option>Religieux</option><option>Autre</option></select></div></div><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="ac-date"/></div><div class="form-group"><label>Lieu</label><input id="ac-lieu" placeholder="Où?"/></div></div><div class="form-row"><div class="form-group"><label>Budget ($)</label><input type="number" id="ac-budget" placeholder="0"/></div><div class="form-group"><label>Statut</label><select id="ac-statut"><option>À faire</option><option>En cours</option><option>Terminé</option></select></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-activite\')">Annuler</button><button class="btn btn-gold" onclick="ajouterActivite()">Enregistrer</button></div></div></div>'
+  + '<div class="modal-bg" id="modal-vacance"><div class="modal"><h3>✈️ Projet de vacances</h3><div class="form-row"><div class="form-group"><label>Destination</label><input id="vc-dest" placeholder="Pays, ville..."/></div><div class="form-group"><label>Type</label><select id="vc-type"><option>Famille</option><option>Couple</option><option>Solo</option></select></div></div><div class="form-row"><div class="form-group"><label>Départ</label><input type="date" id="vc-dep"/></div><div class="form-group"><label>Retour</label><input type="date" id="vc-ret"/></div></div><div class="form-row"><div class="form-group"><label>Budget total ($)</label><input type="number" id="vc-budget" placeholder="0"/></div><div class="form-group"><label>Statut</label><select id="vc-statut"><option>En planification</option><option>Réservé</option><option>Terminé</option></select></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-vacance\')">Annuler</button><button class="btn btn-gold" onclick="ajouterVacance()">Enregistrer</button></div></div></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: INVESTISSEMENTS
+// ═══════════════════════════════════════════════════════════════════════════
+function pgInvestissements() {
+  var inv = DB.investissements;
+  var total = inv.comptes.reduce(function(a,c){return a+Number(c.solde||0);},0);
+  var totalCible = inv.comptes.reduce(function(a,c){return a+Number(c.cible||0);},0);
+  var types = ['REEE','REER','CELI','Placement','Immobilier','Autre'];
+  var html = '<div class="grid4" style="margin-bottom:20px">';
+  html += kpi(fmtMoney(total),'Total investi','var(--gold)') + kpi(fmtMoney(totalCible),'Objectif total','var(--blue)') + kpi((totalCible?Math.round(total/totalCible*100):0)+'%','Progression','var(--green)') + kpi(inv.comptes.length,'Comptes','var(--text)');
+  html += '</div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Comptes & Placements</h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-investissement\')">+ Compte</button></div>';
+  html += '<div class="grid2">';
+  var hasAny = false;
+  types.forEach(function(type) {
+    var comptes = inv.comptes.filter(function(c){return c.type===type;});
+    if (!comptes.length) return;
+    hasAny = true;
+    var sousTotal = comptes.reduce(function(a,c){return a+Number(c.solde||0);},0);
+    html += '<div class="card pilier-card pilier-investissement"><div class="card-title">'+type+' <span>'+fmtMoney(sousTotal)+'</span></div>';
+    comptes.forEach(function(c) {
+      var pct = c.cible ? Math.min(100,Math.round(Number(c.solde)/Number(c.cible)*100)) : 0;
+      html += '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div><span style="font-size:13px;font-weight:500">'+c.nom+'</span>'+(c.institution?'<span style="font-size:11px;color:var(--text3);margin-left:6px">'+c.institution+'</span>':'')+'</div><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;color:var(--gold)">'+fmtMoney(c.solde)+'</span><button class="btn btn-sm btn-outline" onclick="supprimerItem(\'investissements\',\'comptes\',\''+c.id+'\')">✕</button></div></div>'+(c.cible?'<div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)"><span>Cible: '+fmtMoney(c.cible)+'</span><span>'+pct+'%</span></div><div class="progress-bar"><div class="progress-fill pf-gold" style="width:'+pct+'%"></div></div></div>':'')+(c.cotisation?'<div style="font-size:11px;color:var(--text3);margin-top:3px">Cotisation: '+fmtMoney(c.cotisation)+'/mois</div>':'')+'</div>';
+    });
+    html += '</div>';
+  });
+  if (!hasAny) { html += '<div class="card" style="grid-column:1/-1"><div class="empty">Aucun compte enregistré. <button class="btn btn-gold btn-sm" onclick="openModal(\'modal-investissement\')" style="margin-top:10px">Ajouter →</button></div></div>'; }
+  html += '</div>';
+  html += '<div class="modal-bg" id="modal-investissement"><div class="modal"><h3>📈 Nouveau compte / placement</h3><div class="form-row"><div class="form-group"><label>Type</label><select id="iv-type"><option>REEE</option><option>REER</option><option>CELI</option><option>Placement</option><option>Immobilier</option><option>Autre</option></select></div><div class="form-group"><label>Nom du compte</label><input id="iv-nom" placeholder="Ex: REEE enfant 1"/></div></div><div class="form-row"><div class="form-group"><label>Institution</label><input id="iv-inst" placeholder="Banque, courtier..."/></div><div class="form-group"><label>Solde actuel ($)</label><input type="number" id="iv-solde" placeholder="0"/></div></div><div class="form-row"><div class="form-group"><label>Objectif cible ($)</label><input type="number" id="iv-cible" placeholder="0"/></div><div class="form-group"><label>Cotisation mensuelle ($)</label><input type="number" id="iv-cot" placeholder="0"/></div></div><div class="form-row"><div class="form-group"><label>Notes</label><textarea id="iv-notes" placeholder="Bénéficiaire, stratégie..."></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-investissement\')">Annuler</button><button class="btn btn-gold" onclick="ajouterInvestissement()">Enregistrer</button></div></div></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: OBJECTIFS (PMP)
+// ═══════════════════════════════════════════════════════════════════════════
+function pgObjectifs() {
+  var o = DB.objectifs;
+  var actifs = o.projets.filter(function(p){return p.statut!=='Terminé';});
+  var termines = o.projets.filter(function(p){return p.statut==='Terminé';});
+  var html = '<div class="grid4" style="margin-bottom:20px">';
+  html += kpi(o.projets.length,'Total objectifs','var(--text)') + kpi(actifs.length,'Actifs','var(--blue)') + kpi(termines.length,'Terminés','var(--green)') + kpi((o.projets.length?Math.round(o.projets.reduce(function(a,p){return a+Number(p.pct||0);},0)/o.projets.length):0)+'%','Avancement moyen','var(--gold)');
+  html += '</div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Registre des objectifs <span style="font-size:11px;color:var(--text3);font-weight:400">Méthode PMP</span></h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-objectif\')">+ Objectif</button></div>';
+  if (o.projets.length) {
+    o.projets.forEach(function(p) {
+      var retard = p.echeance && new Date(p.echeance) < new Date() && p.statut !== 'Terminé';
+      html += '<div class="card pilier-card pilier-objectifs" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-weight:600;font-size:15px">'+p.nom+'</span>'+priorityBadge(p.priorite)+statutBadge(p.statut)+(p.pilier?'<span class="badge badge-purple">'+p.pilier+'</span>':'')+'</div><div style="font-size:12px;color:var(--text3);margin-bottom:8px">Responsable: <strong style="color:var(--text2)">'+(p.responsable||'?')+'</strong> · Échéance: <strong style="color:'+(retard?'var(--red)':'var(--amber)')+'">'+fmtDate(p.echeance)+'</strong></div>'+(p.description?'<div style="font-size:13px;color:var(--text2);margin-bottom:8px">'+p.description+'</div>':'')+'<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--text3)">Avancement</span><span style="font-weight:600">'+(p.pct||0)+'%</span></div><div class="progress-bar"><div class="progress-fill '+progressColor(p.pct||0)+'" style="width:'+(p.pct||0)+'%"></div></div></div>'+(p.indicateurs?'<div style="font-size:12px;color:var(--text3);margin-top:6px">KPI: '+p.indicateurs+'</div>':'')+(p.risques?'<div style="font-size:12px;color:var(--amber);margin-top:4px">⚠️ Risques: '+p.risques+'</div>':'')+'</div><div style="display:flex;flex-direction:column;gap:4px;margin-left:12px"><button class="btn btn-sm btn-outline" onclick="editPctObjectif(\''+p.id+'\')">% Màj</button><button class="btn btn-sm btn-outline" onclick="supprimerItem(\'objectifs\',\'projets\',\''+p.id+'\')">✕</button></div></div></div>';
+    });
+  } else { html += '<div class="empty">Aucun objectif.<br><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-objectif\')" style="margin-top:10px">Créer un objectif →</button></div>'; }
+  html += '<div class="modal-bg" id="modal-objectif"><div class="modal"><h3>🎯 Nouvel objectif (PMP)</h3><div class="form-row"><div class="form-group"><label>Nom de l\'objectif</label><input id="ob-nom" placeholder="Ex: Rembourser la voiture"/></div><div class="form-group"><label>Pilier</label><select id="ob-pilier"><option>Famille</option><option>Spirituel</option><option>Éducation</option><option>Finance</option><option>Santé</option><option>Investissement</option><option>Autre</option></select></div></div><div class="form-row"><div class="form-group"><label>Description / Portée</label><textarea id="ob-desc" placeholder="Portée et résultat attendu..."></textarea></div></div><div class="form-row"><div class="form-group"><label>Responsable</label><select id="ob-resp">'+membreOptions()+'</select></div><div class="form-group"><label>Priorité</label><select id="ob-prio"><option>Haute</option><option>Moyenne</option><option>Basse</option></select></div></div><div class="form-row"><div class="form-group"><label>Statut</label><select id="ob-statut"><option>À faire</option><option>En cours</option><option>Terminé</option><option>En attente</option><option>Bloqué</option></select></div><div class="form-group"><label>% complétion</label><input type="number" id="ob-pct" value="0" min="0" max="100"/></div></div><div class="form-row"><div class="form-group"><label>Début</label><input type="date" id="ob-debut"/></div><div class="form-group"><label>Échéance</label><input type="date" id="ob-echeance"/></div></div><div class="form-row"><div class="form-group"><label>Indicateurs (KPI)</label><input id="ob-kpi" placeholder="Ex: Économiser 500$/mois..."/></div></div><div class="form-row"><div class="form-group"><label>Registre des risques</label><textarea id="ob-risques" placeholder="Risques identifiés..."></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-objectif\')">Annuler</button><button class="btn btn-gold" onclick="ajouterObjectif()">Créer l\'objectif</button></div></div></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: TÂCHES & AGENDA
+// ═══════════════════════════════════════════════════════════════════════════
+function pgTaches() {
+  var items = DB.taches.items;
+  var aFaire = items.filter(function(i){return i.statut==='À faire';});
+  var enCours = items.filter(function(i){return i.statut==='En cours';});
+  var termines = items.filter(function(i){return i.statut==='Terminé';});
+  var prochains = DB.taches.agenda.filter(function(a){return new Date(a.date)>=new Date();}).sort(function(a,b){return new Date(a.date)-new Date(b.date);}).slice(0,6);
+  var html = '<div class="tabs"><button class="tab active" onclick="switchTab(event,\'ta-taches\')">✅ Tâches</button><button class="tab" onclick="switchTab(event,\'ta-agenda\')">📅 Agenda</button></div>';
+  html += '<div id="ta-taches"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="display:flex;gap:8px"><span class="badge badge-gray">À faire: '+aFaire.length+'</span><span class="badge badge-blue">En cours: '+enCours.length+'</span><span class="badge badge-green">Terminés: '+termines.length+'</span></div><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-tache\')">+ Tâche</button></div>';
+  html += '<div class="grid2">';
+  html += '<div><div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">À faire & En cours</div>';
+  var actives = aFaire.concat(enCours).sort(function(a,b){ var o={Haute:0,Moyenne:1,Basse:2}; return (o[a.priorite]||1)-(o[b.priorite]||1); });
+  if (actives.length) {
+    actives.forEach(function(item) {
+      html += '<div class="card" style="margin-bottom:8px;padding:12px 14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><input type="checkbox" onchange="terminerTache(\''+item.id+'\')" style="width:15px;height:15px;cursor:pointer;accent-color:var(--gold)"/><span style="font-size:13px;font-weight:500;flex:1">'+item.titre+'</span>'+priorityBadge(item.priorite)+'</div><div style="font-size:11px;color:var(--text3);display:flex;gap:10px;padding-left:23px">'+(item.responsable?'<span>👤 '+item.responsable+'</span>':'')+(item.echeance?'<span>📅 '+fmtDate(item.echeance)+'</span>':'')+'</div><div style="padding-left:23px;margin-top:6px;display:flex;gap:6px">'+statutBadge(item.statut)+'<button class="btn btn-sm btn-outline" onclick="supprimerItem(\'taches\',\'items\',\''+item.id+'\')">✕</button></div></div>';
+    });
+  } else { html += '<div class="empty">Toutes les tâches sont terminées! 🎉</div>'; }
+  html += '</div>';
+  html += '<div><div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Récemment terminées</div>';
+  if (termines.length) {
+    termines.slice(-6).forEach(function(item) {
+      html += '<div class="card" style="margin-bottom:6px;padding:10px 14px;opacity:.7"><div style="display:flex;align-items:center;gap:8px"><input type="checkbox" checked onchange="deTerminerTache(\''+item.id+'\')" style="width:14px;height:14px;accent-color:var(--green)"/><span style="font-size:13px;text-decoration:line-through;color:var(--text3)">'+item.titre+'</span><span class="badge badge-green" style="margin-left:auto">✓</span></div></div>';
+    });
+  } else { html += '<div class="empty">Aucune tâche terminée.</div>'; }
+  html += '</div></div></div>';
+  // Agenda
+  html += '<div id="ta-agenda" style="display:none"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Agenda familial</h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-agenda\')">+ Événement</button></div>';
+  if (prochains.length) {
+    html += '<div style="margin-bottom:16px"><div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Prochains événements</div>';
+    prochains.forEach(function(a) {
+      html += '<div class="agenda-day"><div class="agenda-day-title">'+fmtDate(a.date)+'</div><div class="agenda-item"><div class="agenda-dot" style="background:'+(a.couleur||'var(--blue)')+'"></div><div style="flex:1"><span style="font-size:13px;font-weight:500">'+a.titre+'</span>'+(a.heure?'<span style="font-size:12px;color:var(--text3);margin-left:8px">'+a.heure+'</span>':'')+(a.lieu?'<span style="font-size:12px;color:var(--text3);margin-left:8px">📍 '+a.lieu+'</span>':'')+'</div><button class="btn btn-sm btn-outline" onclick="supprimerItem(\'taches\',\'agenda\',\''+a.id+'\')">✕</button></div></div>';
+    });
+    html += '</div>';
+  }
+  if (DB.taches.agenda.length) {
+    var sortedAg = DB.taches.agenda.slice().sort(function(a,b){return new Date(a.date)-new Date(b.date);});
+    html += '<div class="table-wrap"><table><tr><th>Date</th><th>Événement</th><th>Heure</th><th>Lieu</th><th></th></tr>';
+    sortedAg.forEach(function(a) { html += '<tr><td>'+fmtDate(a.date)+'</td><td style="font-weight:500">'+a.titre+'</td><td>'+(a.heure||'-')+'</td><td>'+(a.lieu||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="supprimerItem(\'taches\',\'agenda\',\''+a.id+'\')">✕</button></td></tr>'; });
+    html += '</table></div>';
+  } else if (!prochains.length) { html += '<div class="empty">Aucun événement. Commencez à planifier!</div>'; }
+  html += '</div>';
+  // Modals
+  html += '<div class="modal-bg" id="modal-tache"><div class="modal"><h3>✅ Nouvelle tâche</h3><div class="form-row"><div class="form-group"><label>Titre</label><input id="tc-titre" placeholder="Description courte"/></div><div class="form-group"><label>Responsable</label><select id="tc-resp">'+membreOptions()+'</select></div></div><div class="form-row"><div class="form-group"><label>Description</label><textarea id="tc-desc" placeholder="Détails..."></textarea></div></div><div class="form-row"><div class="form-group"><label>Priorité</label><select id="tc-prio"><option>Haute</option><option selected>Moyenne</option><option>Basse</option></select></div><div class="form-group"><label>Statut</label><select id="tc-statut"><option>À faire</option><option>En cours</option><option>En attente</option></select></div></div><div class="form-row"><div class="form-group"><label>Catégorie</label><select id="tc-cat"><option>Général</option><option>Spirituel</option><option>Éducation</option><option>Finance</option><option>Santé</option><option>Maison</option><option>Administratif</option></select></div><div class="form-group"><label>Échéance</label><input type="date" id="tc-echeance"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-tache\')">Annuler</button><button class="btn btn-gold" onclick="ajouterTache()">Créer</button></div></div></div>'
+  + '<div class="modal-bg" id="modal-agenda"><div class="modal"><h3>📅 Nouvel événement</h3><div class="form-row"><div class="form-group"><label>Titre</label><input id="ag-titre" placeholder="Nom de l\'événement"/></div><div class="form-group"><label>Date</label><input type="date" id="ag-date"/></div></div><div class="form-row"><div class="form-group"><label>Heure</label><input type="time" id="ag-heure"/></div><div class="form-group"><label>Lieu</label><input id="ag-lieu" placeholder="Où?"/></div></div><div class="form-row"><div class="form-group"><label>Couleur</label><select id="ag-couleur"><option value="#4A88D4">Bleu</option><option value="#3DAA7A">Vert</option><option value="#D4A843">Or</option><option value="#E05555">Rouge</option><option value="#9A6ADA">Violet</option></select></div></div><div class="form-row"><div class="form-group"><label>Notes</label><textarea id="ag-notes"></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-agenda\')">Annuler</button><button class="btn btn-gold" onclick="ajouterAgenda()">Ajouter</button></div></div></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: MEMBRES
+// ═══════════════════════════════════════════════════════════════════════════
+function pgMembres() {
+  var ms = getMembres();
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><div><h3 style="font-size:16px;font-weight:600">'+DB.famille.nom+'</h3><p style="font-size:13px;color:var(--text3);margin-top:2px">'+ms.length+' membre'+(ms.length!==1?'s':'')+' enregistré'+(ms.length!==1?'s':'')+'</p></div><div style="display:flex;gap:8px"><button class="btn btn-outline btn-sm" onclick="openModal(\'modal-famille-nom\')">✏️ Renommer</button><button class="btn btn-gold" onclick="openModal(\'modal-membre\')">+ Ajouter un membre</button></div></div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">';
+  if (ms.length) {
+    ms.forEach(function(m) {
+      var tachesM = DB.taches.items.filter(function(t){return t.responsable===m.prenom;});
+      var col = avatarColor(m.prenom);
+      html += '<div class="card" style="border-top:3px solid '+col+'"><div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><div style="width:52px;height:52px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:'+col+';flex-shrink:0">'+initiales(m)+'</div><div><div style="font-size:15px;font-weight:600">'+m.prenom+' '+(m.nom||'')+'</div><div style="font-size:12px;color:var(--text3)">'+(m.role||'Membre')+(m.age?' · '+m.age+' ans':'')+'</div></div></div>';
+      if (m.email) { html += '<div class="stat-row"><div class="stat-label">Email</div><div style="color:var(--blue);font-size:12px">'+m.email+'</div></div>'; }
+      html += '<div style="margin-top:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">Tâches assignées ('+tachesM.length+')</div>';
+      if (tachesM.length) {
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+        tachesM.slice(0,4).forEach(function(t) { html += '<span class="badge '+(t.statut==='Terminé'?'badge-green':'badge-blue')+'" style="font-size:10px">'+t.titre.slice(0,20)+(t.titre.length>20?'…':'')+'</span>'; });
+        if (tachesM.length > 4) html += '<span class="badge badge-gray">+' + (tachesM.length-4) + '</span>';
+        html += '</div>';
+      } else { html += '<span style="font-size:12px;color:var(--text3)">Aucune tâche</span>'; }
+      html += '</div><div style="display:flex;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><button class="btn btn-sm btn-outline" style="flex:1" onclick="navTo(\'taches\')">+ Assigner tâche</button><button class="btn btn-sm btn-outline" onclick="supprimerMembre(\''+m.id+'\')">✕</button></div></div>';
+    });
+  } else {
+    html += '<div class="card" style="grid-column:1/-1"><div class="empty">Aucun membre enregistré. Ajoutez les membres de votre famille pour leur assigner des tâches.</div></div>';
+  }
+  html += '</div>';
+  html += '<div class="modal-bg" id="modal-membre"><div class="modal"><h3>👤 Nouveau membre</h3><div class="form-row"><div class="form-group"><label>Prénom *</label><input id="mb-prenom" placeholder="Prénom"/></div><div class="form-group"><label>Nom</label><input id="mb-nom" placeholder="Nom de famille"/></div></div><div class="form-row"><div class="form-group"><label>Rôle</label><select id="mb-role"><option>Parent</option><option>Enfant</option><option>Tuteur</option><option>Autre</option></select></div><div class="form-group"><label>Âge</label><input type="number" id="mb-age" placeholder="Âge"/></div></div><div class="form-row"><div class="form-group"><label>Email</label><input type="email" id="mb-email" placeholder="email@exemple.com"/></div></div><div class="form-row"><div class="form-group"><label>Responsabilités</label><textarea id="mb-resp" placeholder="Ex: Gestion des finances..."></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-membre\')">Annuler</button><button class="btn btn-gold" onclick="ajouterMembre()">Ajouter</button></div></div></div>'
+  + '<div class="modal-bg" id="modal-famille-nom"><div class="modal"><h3>✏️ Nom de la famille</h3><div class="form-row"><div class="form-group"><label>Nom de la famille</label><input id="fn-nom" value="'+DB.famille.nom+'"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-famille-nom\')">Annuler</button><button class="btn btn-gold" onclick="renommerFamille()">Enregistrer</button></div></div></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: PARAMÈTRES
+// ═══════════════════════════════════════════════════════════════════════════
+var THEMES = [
+  {id:'sombre',  label:'Nuit profonde', fond:'#0F1C2E', sidebar:'#162233', accent:'#D4A843', carte:'#1A2B3E'},
+  {id:'marine',  label:'Bleu marine',   fond:'#0A1628', sidebar:'#0F2040', accent:'#4A88D4', carte:'#142035'},
+  {id:'foret',   label:'Forêt sombre',  fond:'#0D1F14', sidebar:'#122B1A', accent:'#3DAA7A', carte:'#162B1E'},
+  {id:'bordeaux',label:'Bordeaux',      fond:'#1A0A10', sidebar:'#2A1020', accent:'#C85580', carte:'#221018'},
+  {id:'ardoise', label:'Ardoise',       fond:'#1A1A2E', sidebar:'#16213E', accent:'#9A6ADA', carte:'#1F2040'},
+  {id:'cafe',    label:'Café chaud',    fond:'#1C1108', sidebar:'#2A1A0A', accent:'#D4943A', carte:'#22180A'},
+  {id:'clair',   label:'Clarté',        fond:'#F0F4F8', sidebar:'#E0E8F0', accent:'#2A68B4', carte:'#FFFFFF'},
+  {id:'creme',   label:'Crème',         fond:'#F5F0E8', sidebar:'#EDE5D8', accent:'#8B5E3C', carte:'#FFFDF8'}
+];
+function pgParametres() {
+  var p = DB.parametres || {};
+  var html = '<div class="grid2" style="gap:24px">';
+  // LEFT
+  html += '<div>';
+  // Themes
+  html += '<div class="card" style="margin-bottom:16px"><div class="card-title">🎨 Thèmes prédéfinis</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  THEMES.forEach(function(t) {
+    var sel = p.theme === t.id;
+    html += '<div class="theme-preview'+(sel?' selected':'')+'" onclick="appliquerThemePreset(\''+t.id+'\')" data-theme-id="'+t.id+'">';
+    html += '<div style="height:44px;background:'+t.fond+';display:flex;gap:0">';
+    html += '<div style="width:36%;background:'+t.sidebar+'"></div>';
+    html += '<div style="flex:1;display:flex;flex-direction:column;gap:4px;padding:8px">';
+    html += '<div style="height:8px;border-radius:3px;background:'+t.accent+';width:60%"></div>';
+    html += '<div style="height:6px;border-radius:3px;background:'+t.carte+';width:90%"></div>';
+    html += '<div style="height:6px;border-radius:3px;background:'+t.carte+';width:70%"></div>';
+    html += '</div></div>';
+    html += '<div style="padding:6px 10px;background:#1E2F44;font-size:12px;color:'+(sel?'#E8C96A':'#8FA8C8')+'">'+t.label+(sel?' ✓':'')+'</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+  // Custom colors
+  html += '<div class="card"><div class="card-title">🖌️ Couleurs personnalisées</div><div style="display:flex;flex-direction:column;gap:14px">';
+  html += colorPicker('cp-fond', 'Couleur de fond', 'Arrière-plan principal', p.couleurFond||'#0F1C2E', 'fond');
+  html += colorPicker('cp-sidebar', 'Barre latérale', 'Menu de navigation', p.couleurSidebar||'#162233', 'sidebar');
+  html += colorPicker('cp-accent', 'Couleur d\'accentuation', 'Boutons et titres', p.couleurAccent||'#D4A843', 'accent');
+  html += colorPicker('cp-carte', 'Couleur des cartes', 'Panneaux et modules', p.couleurCarte||'#1A2B3E', 'carte');
+  html += '<button class="btn btn-gold" style="width:100%;margin-top:4px" onclick="sauvegarderCouleurs()">✓ Appliquer les couleurs</button>';
+  html += '<button class="btn btn-outline btn-sm" style="width:100%" onclick="resetTheme()">↺ Réinitialiser par défaut</button>';
+  html += '</div></div>';
+  html += '</div>';
+  // RIGHT
+  html += '<div>';
+  html += '<div class="card" style="margin-bottom:16px"><div class="card-title">📊 Exportations</div><div style="display:flex;flex-direction:column;gap:10px">';
+  html += exportBox('📄 Rapport PDF complet','Tableau de bord, objectifs, tâches, finances en PDF formaté','exporterPDF()','btn-gold','Générer le PDF');
+  html += exportBox('📊 Classeur Excel complet','10 onglets : Finances, Investissements, Objectifs, Tâches, Agenda, Éducation, Loisirs...','exporterExcel()','btn-green','Générer Excel (.xlsx)');
+  html += exportBox('💰 Finances seules (Excel)','Transactions, budget et analyses financières','exporterExcelFinances()','btn-outline','Exporter finances');
+  html += exportBox('💾 Sauvegarde JSON','Exportation complète des données','exportData()','btn-outline','Exporter JSON');
+  html += '</div></div>';
+  html += '<div class="card" style="margin-bottom:16px"><div class="card-title">📧 Notifications EmailJS <span id="ejs-status">'+(p.emailjs_actif?'<span class="badge badge-green">Actif</span>':'<span class="badge badge-gray">Inactif</span>')+'</span></div>';
+  html += '<div style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.6">Envoyez des emails automatiques quand une tâche est assignée. Créez un compte gratuit sur <strong style="color:var(--blue)">emailjs.com</strong> puis renseignez vos clés ci-dessous.</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:10px">';
+  html += '<div class="form-group"><label>Public Key (Account → API Keys)</label><input id="ejs-pubkey" placeholder="ex: user_aBcDeFgHiJ..." value="'+(p.emailjs_public_key||'')+'"/></div>';
+  html += '<div class="form-group"><label>Service ID (Email Services → votre service)</label><input id="ejs-service" placeholder="ex: service_xxxxxxx" value="'+(p.emailjs_service_id||'')+'"/></div>';
+  html += '<div class="form-group"><label>Template ID (Email Templates → votre modèle)</label><input id="ejs-template" placeholder="ex: template_xxxxxxx" value="'+(p.emailjs_template_id||'')+'"/></div>';
+  html += '<div style="display:flex;gap:8px;margin-top:4px">';
+  html += '<button class="btn btn-gold" style="flex:1" onclick="sauvegarderEmailJS()">💾 Sauvegarder</button>';
+  html += '<button class="btn btn-green btn-sm" onclick="testerEmailJS()">🧪 Tester</button>';
+  html += '</div>';
+  html += '<div style="background:var(--navy3);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text3);line-height:1.7">';
+  html += '<strong style="color:var(--text2)">Guide rapide EmailJS (5 min) :</strong><br>';
+  html += '1. Créez un compte sur <strong>emailjs.com</strong><br>';
+  html += '2. Add Service → connectez votre Gmail ou Outlook<br>';
+  html += '3. Email Templates → Create Template → copiez le Template ID<br>';
+  html += '4. Variables utilisées : <code>{{to_email}}</code> <code>{{to_name}}</code> <code>{{task_title}}</code> <code>{{task_priority}}</code> <code>{{task_deadline}}</code> <code>{{task_desc}}</code> <code>{{assigned_by}}</code>';
+  html += '</div>';
+  html += '</div></div>';
+  html += '<div class="card"><div class="card-title">ℹ️ À propos</div>';
+  html += '<div class="stat-row"><div class="stat-label">Application</div><div>FamilyOS v2.0</div></div>';
+  html += '<div class="stat-row"><div class="stat-label">Membres</div><div>'+getMembres().length+'</div></div>';
+  html += '<div class="stat-row"><div class="stat-label">Tâches</div><div>'+DB.taches.items.length+'</div></div>';
+  html += '<div class="stat-row"><div class="stat-label">Objectifs</div><div>'+DB.objectifs.projets.length+'</div></div>';
+  html += '<div class="stat-row"><div class="stat-label">Transactions</div><div>'+DB.finances.transactions.length+'</div></div>';
+  html += '<div class="stat-row"><div class="stat-label">Stockage</div><div style="color:var(--green)">Local (privé)</div></div>';
+  html += '</div></div>';
+  html += '</div>';
+  return html;
+}
+function colorPicker(id, label, sublabel, value, champ) {
+  return '<div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:13px;font-weight:500">'+label+'</div><div style="font-size:11px;color:var(--text3)">'+sublabel+'</div></div><input type="color" id="'+id+'" value="'+value+'" style="width:44px;height:36px;border:none;cursor:pointer;border-radius:8px;background:none" onchange="previewColor(\''+champ+'\',this.value)"/></div>';
+}
+function exportBox(title, desc, fn, btnClass, btnLabel) {
+  return '<div style="background:var(--navy3);border-radius:10px;padding:14px"><div style="font-size:13px;font-weight:500;margin-bottom:4px">'+title+'</div><div style="font-size:12px;color:var(--text3);margin-bottom:10px">'+desc+'</div><button class="btn '+btnClass+'" style="width:100%" onclick="'+fn+'">'+btnLabel+'</button></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIONS: SPIRITUEL
+// ═══════════════════════════════════════════════════════════════════════════
+function ajouterPriere() {
+  var s = document.getElementById('p-sujet').value.trim();
+  if (!s) return toast('Saisissez un sujet','var(--red2)');
+  DB.spirituel.prieres.push({id:uid(),sujet:s,pour:document.getElementById('p-pour').value,date:document.getElementById('p-date').value,reponse:''});
+  saveData(); closeModal('modal-priere'); render(); toast('Prière ajoutée ✓');
+}
+function reponderPriere(id) {
+  var p = DB.spirituel.prieres.find(function(p){return p.id===id;});
+  if (!p) return;
+  var r = prompt('Comment Dieu a-t-il répondu à cette prière?');
+  if (r === null) return;
+  p.reponse = r; saveData(); render(); toast('Réponse enregistrée ✓');
+}
+function ajouterVerset() {
+  var t = document.getElementById('v-texte').value.trim();
+  if (!t) return toast('Saisissez le texte','var(--red2)');
+  DB.spirituel.versets.push({id:uid(),ref:document.getElementById('v-ref').value,texte:t,pct:document.getElementById('v-pct').value||0,actuel:false});
+  saveData(); closeModal('modal-verset'); render(); toast('Verset ajouté ✓');
+}
+function setVersetActuel(id) {
+  DB.spirituel.versets.forEach(function(v){v.actuel = v.id===id;});
+  saveData(); render(); toast('Verset actuel défini ✓');
+}
+function ajouterRencontre() {
+  DB.spirituel.rencontres.push({id:uid(),date:document.getElementById('r-date').value,presents:document.getElementById('r-presents').value,theme:document.getElementById('r-theme').value,notes:document.getElementById('r-notes').value});
+  saveData(); closeModal('modal-rencontre'); render(); toast('Rencontre enregistrée ✓');
+}
+function ajouterMeditation() {
+  DB.spirituel.meditations.push({id:uid(),date:document.getElementById('m-date').value,duree:document.getElementById('m-duree').value,theme:document.getElementById('m-theme').value,notes:document.getElementById('m-notes').value});
+  saveData(); closeModal('modal-meditation'); render(); toast('Session enregistrée ✓');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIONS: EDUCATION
+// ═══════════════════════════════════════════════════════════════════════════
+function ajouterProgramme() {
+  var n = document.getElementById('pg-nom').value.trim();
+  if (!n) return toast('Saisissez un nom','var(--red2)');
+  DB.education.programmes.push({id:uid(),nom:n,membre:document.getElementById('pg-membre').value,type:document.getElementById('pg-type').value,matiere:document.getElementById('pg-matiere').value,niveau:document.getElementById('pg-niveau').value,statut:document.getElementById('pg-statut').value,pct:document.getElementById('pg-pct').value||0,echeance:document.getElementById('pg-echeance').value});
+  saveData(); closeModal('modal-programme'); render(); toast('Programme ajouté ✓');
+}
+function ajouterCours() {
+  var t = document.getElementById('c-titre').value.trim();
+  if (!t) return toast('Saisissez un titre','var(--red2)');
+  DB.education.cours.push({id:uid(),titre:t,membre:document.getElementById('c-membre').value,plateforme:document.getElementById('c-plateforme').value,cout:document.getElementById('c-cout').value||0,statut:document.getElementById('c-statut').value});
+  saveData(); closeModal('modal-cours'); render(); toast('Cours ajouté ✓');
+}
+function editPctItem(module, col, id) {
+  var item = DB[module][col].find(function(i){return i.id===id;});
+  if (!item) return;
+  var v = prompt('% de complétion:', item.pct||0);
+  if (v === null) return;
+  item.pct = Math.max(0,Math.min(100,Number(v)));
+  saveData(); render(); toast('Mis à jour ✓');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIONS: FINANCES
+// ═══════════════════════════════════════════════════════════════════════════
+function ajouterTransaction() {
+  var m = document.getElementById('tx-montant').value;
+  if (!m) return toast('Saisissez un montant','var(--red2)');
+  DB.finances.transactions.push({id:uid(),type:document.getElementById('tx-type').value,montant:Number(m),desc:document.getElementById('tx-desc').value,categorie:document.getElementById('tx-cat').value,date:document.getElementById('tx-date').value||new Date().toISOString().slice(0,10)});
+  saveData(); closeModal('modal-transaction'); render(); toast('Transaction ajoutée ✓');
+}
+function ajouterBudget() {
+  var c = document.getElementById('bg-cat').value.trim();
+  var m = document.getElementById('bg-montant').value;
+  if (!c || !m) return toast('Remplissez tous les champs','var(--red2)');
+  DB.finances.budget.push({id:uid(),categorie:c,montant:Number(m)});
+  saveData(); closeModal('modal-budget'); render(); toast('Budget ajouté ✓');
+}
+function supprimerFinance(col, id) {
+  DB.finances[col] = DB.finances[col].filter(function(i){return i.id!==id;});
+  saveData(); render(); toast('Supprimé ✓','var(--red2)');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIONS: LOISIRS
+// ═══════════════════════════════════════════════════════════════════════════
+function ajouterActivite() {
+  var t = document.getElementById('ac-titre').value.trim();
+  if (!t) return toast('Saisissez un titre','var(--red2)');
+  DB.loisirs.activites.push({id:uid(),titre:t,type:document.getElementById('ac-type').value,date:document.getElementById('ac-date').value,lieu:document.getElementById('ac-lieu').value,budget:document.getElementById('ac-budget').value||0,statut:document.getElementById('ac-statut').value});
+  saveData(); closeModal('modal-activite'); render(); toast('Activité planifiée ✓');
+}
+function ajouterVacance() {
+  var d = document.getElementById('vc-dest').value.trim();
+  if (!d) return toast('Saisissez une destination','var(--red2)');
+  DB.loisirs.vacances.push({id:uid(),destination:d,type:document.getElementById('vc-type').value,depart:document.getElementById('vc-dep').value,retour:document.getElementById('vc-ret').value,budget:document.getElementById('vc-budget').value||0,statut:document.getElementById('vc-statut').value});
+  saveData(); closeModal('modal-vacance'); render(); toast('Vacance planifiée ✓');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIONS: INVESTISSEMENTS
+// ═══════════════════════════════════════════════════════════════════════════
+function ajouterInvestissement() {
+  var n = document.getElementById('iv-nom').value.trim();
+  if (!n) return toast('Saisissez un nom','var(--red2)');
+  DB.investissements.comptes.push({id:uid(),type:document.getElementById('iv-type').value,nom:n,institution:document.getElementById('iv-inst').value,solde:Number(document.getElementById('iv-solde').value)||0,cible:Number(document.getElementById('iv-cible').value)||0,cotisation:Number(document.getElementById('iv-cot').value)||0,notes:document.getElementById('iv-notes').value});
+  saveData(); closeModal('modal-investissement'); render(); toast('Compte ajouté ✓');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIONS: OBJECTIFS
+// ═══════════════════════════════════════════════════════════════════════════
+function ajouterObjectif() {
+  var n = document.getElementById('ob-nom').value.trim();
+  if (!n) return toast('Saisissez un nom','var(--red2)');
+  DB.objectifs.projets.push({id:uid(),nom:n,pilier:document.getElementById('ob-pilier').value,description:document.getElementById('ob-desc').value,responsable:document.getElementById('ob-resp').value,priorite:document.getElementById('ob-prio').value,statut:document.getElementById('ob-statut').value,pct:Number(document.getElementById('ob-pct').value)||0,debut:document.getElementById('ob-debut').value,echeance:document.getElementById('ob-echeance').value,indicateurs:document.getElementById('ob-kpi').value,risques:document.getElementById('ob-risques').value});
+  saveData(); closeModal('modal-objectif'); render(); toast('Objectif créé ✓');
+}
+function editPctObjectif(id) {
+  var p = DB.objectifs.projets.find(function(p){return p.id===id;});
+  if (!p) return;
+  var v = prompt('Pourcentage pour "'+p.nom+'":', p.pct||0);
+  if (v === null) return;
+  p.pct = Math.max(0,Math.min(100,Number(v)));
+  if (p.pct === 100) p.statut = 'Terminé';
+  saveData(); render(); toast('Avancement mis à jour ✓');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIONS: TÂCHES
+// ═══════════════════════════════════════════════════════════════════════════
+function ajouterTache() {
+  var t = document.getElementById('tc-titre').value.trim();
+  if (!t) return toast('Saisissez un titre','var(--red2)');
+  var responsable = document.getElementById('tc-resp').value;
+  var echeance = document.getElementById('tc-echeance').value;
+  var priorite = document.getElementById('tc-prio').value;
+  var desc = document.getElementById('tc-desc').value;
+  var tache = {id:uid(), titre:t, responsable:responsable, description:desc, priorite:priorite, statut:document.getElementById('tc-statut').value, categorie:document.getElementById('tc-cat').value, echeance:echeance};
+  DB.taches.items.push(tache);
+  saveData(); closeModal('modal-tache'); render(); toast('Tâche créée ✓');
+  if (responsable) envoyerEmailTache(tache);
+}
+function terminerTache(id) {
+  var t = DB.taches.items.find(function(i){return i.id===id;});
+  if (t) t.statut = 'Terminé';
+  saveData(); render(); toast('Tâche terminée ✓');
+}
+function deTerminerTache(id) {
+  var t = DB.taches.items.find(function(i){return i.id===id;});
+  if (t) t.statut = 'À faire';
+  saveData(); render();
+}
+function ajouterAgenda() {
+  var t = document.getElementById('ag-titre').value.trim();
+  if (!t) return toast('Saisissez un titre','var(--red2)');
+  DB.taches.agenda.push({id:uid(),titre:t,date:document.getElementById('ag-date').value,heure:document.getElementById('ag-heure').value,lieu:document.getElementById('ag-lieu').value,couleur:document.getElementById('ag-couleur').value,notes:document.getElementById('ag-notes').value});
+  saveData(); closeModal('modal-agenda'); render(); toast('Événement ajouté ✓');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIONS: MEMBRES
+// ═══════════════════════════════════════════════════════════════════════════
+function ajouterMembre() {
+  var p = document.getElementById('mb-prenom').value.trim();
+  if (!p) return toast('Saisissez un prénom','var(--red2)');
+  DB.famille.membres.push({id:uid(),prenom:p,nom:document.getElementById('mb-nom').value,role:document.getElementById('mb-role').value,age:document.getElementById('mb-age').value,email:document.getElementById('mb-email').value,responsabilites:document.getElementById('mb-resp').value});
+  saveData(); closeModal('modal-membre'); render(); toast('Membre ajouté ✓');
+}
+function supprimerMembre(id) {
+  if (!confirm('Supprimer ce membre?')) return;
+  DB.famille.membres = DB.famille.membres.filter(function(m){return m.id!==id;});
+  saveData(); render(); toast('Membre supprimé','var(--red2)');
+}
+function renommerFamille() {
+  var n = document.getElementById('fn-nom').value.trim();
+  if (!n) return;
+  DB.famille.nom = n; saveData(); closeModal('modal-famille-nom'); render(); toast('Nom mis à jour ✓');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACTIONS: THÈME
+// ═══════════════════════════════════════════════════════════════════════════
+function appliquerThemePreset(themeId) {
+  var t = THEMES.find(function(th){return th.id===themeId;});
+  if (!t) return;
+  DB.parametres = Object.assign(DB.parametres||{}, {theme:t.id, couleurFond:t.fond, couleurSidebar:t.sidebar, couleurAccent:t.accent, couleurCarte:t.carte});
+  saveData(); appliquerTheme(); render(); toast('Thème "'+t.label+'" appliqué ✓');
+}
+function previewColor(champ, valeur) {
+  var r = document.documentElement.style;
+  if (champ==='fond') { r.setProperty('--navy',valeur); r.setProperty('--navy3',lighten(valeur,8)); r.setProperty('--navy4',lighten(valeur,14)); }
+  if (champ==='sidebar') r.setProperty('--navy2',valeur);
+  if (champ==='accent') { r.setProperty('--gold',valeur); r.setProperty('--gold2',valeur); }
+  if (champ==='carte') r.setProperty('--card',valeur);
+}
+function sauvegarderCouleurs() {
+  var fnd = document.getElementById('cp-fond').value;
+  var sid = document.getElementById('cp-sidebar').value;
+  var acc = document.getElementById('cp-accent').value;
+  var crt = document.getElementById('cp-carte').value;
+  DB.parametres = Object.assign(DB.parametres||{}, {theme:'custom', couleurFond:fnd, couleurSidebar:sid, couleurAccent:acc, couleurCarte:crt});
+  saveData(); appliquerTheme(); toast('Couleurs sauvegardées ✓');
+}
+function resetTheme() {
+  DB.parametres = {theme:'sombre', couleurAccent:'#D4A843', couleurFond:'#0F1C2E', couleurSidebar:'#162233', couleurCarte:'#1A2B3E'};
+  saveData(); appliquerTheme(); render(); toast('Thème réinitialisé ✓');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORT PDF
+// ═══════════════════════════════════════════════════════════════════════════
+function exporterPDF() {
+  if (!window.jspdf) { toast('Bibliothèque PDF non chargée — vérifiez votre connexion','var(--red2)'); return; }
+  try {
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    var W = doc.internal.pageSize.getWidth();
+    var today = new Date().toLocaleDateString('fr-CA');
+    var y = 15;
+    // Header
+    doc.setFillColor(15,28,46); doc.rect(0,0,W,28,'F');
+    doc.setTextColor(212,168,67); doc.setFontSize(20); doc.setFont('helvetica','bold');
+    doc.text('FamilyOS — Rapport familial', 14, 17);
+    doc.setFontSize(9); doc.setTextColor(143,168,200);
+    doc.text(DB.famille.nom + ' · Généré le ' + today, 14, 24);
+    y = 36;
+    var hs = {fillColor:[30,47,68], textColor:[212,168,67], fontSize:8};
+    var bs = {fontSize:8, textColor:[180,200,220]};
+    var ss = {fillColor:[15,28,46]};
+    function addSection(title) {
+      if (y > 220) { doc.addPage(); y = 15; }
+      doc.setTextColor(212,168,67); doc.setFontSize(13); doc.setFont('helvetica','bold');
+      doc.text(title, 14, y); y += 6;
+    }
+    // KPIs
+    addSection('Tableau de bord');
+    var rev = DB.finances.transactions.filter(function(t){return t.type==='Revenu';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+    var dep = DB.finances.transactions.filter(function(t){return t.type==='Dépense';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+    doc.autoTable({startY:y, head:[['Indicateur','Valeur']], body:[
+      ['Membres',getMembres().length],
+      ['Tâches actives',DB.taches.items.filter(function(t){return t.statut!=='Terminé';}).length],
+      ['Objectifs',DB.objectifs.projets.length],
+      ['Total investi',fmtMoney(DB.investissements.comptes.reduce(function(a,c){return a+Number(c.solde||0);},0))],
+      ['Revenus',fmtMoney(rev)], ['Dépenses',fmtMoney(dep)], ['Solde',fmtMoney(rev-dep)]
+    ], theme:'grid', headStyles:hs, bodyStyles:bs, styles:ss}); y = doc.lastAutoTable.finalY + 10;
+    // Membres
+    if (getMembres().length) {
+      addSection('Membres de la famille');
+      doc.autoTable({startY:y, head:[['Prénom','Nom','Rôle','Âge','Email']], body:getMembres().map(function(m){return[m.prenom,m.nom||'-',m.role||'-',m.age||'-',m.email||'-'];}), theme:'grid', headStyles:hs, bodyStyles:bs, styles:ss}); y = doc.lastAutoTable.finalY + 10;
+    }
+    // Objectifs
+    if (DB.objectifs.projets.length) {
+      addSection('Objectifs (PMP)');
+      doc.autoTable({startY:y, head:[['Objectif','Pilier','Responsable','Priorité','Statut','%','Échéance']], body:DB.objectifs.projets.map(function(p){return[p.nom,p.pilier||'-',p.responsable||'-',p.priorite||'-',p.statut||'-',(p.pct||0)+'%',fmtDate(p.echeance)];}), theme:'grid', headStyles:hs, bodyStyles:bs, styles:ss}); y = doc.lastAutoTable.finalY + 10;
+    }
+    // Tâches
+    if (DB.taches.items.length) {
+      addSection('Tâches');
+      doc.autoTable({startY:y, head:[['Tâche','Responsable','Priorité','Statut','Échéance']], body:DB.taches.items.map(function(t){return[t.titre,t.responsable||'-',t.priorite||'-',t.statut||'-',fmtDate(t.echeance)];}), theme:'grid', headStyles:hs, bodyStyles:bs, styles:ss}); y = doc.lastAutoTable.finalY + 10;
+    }
+    // Finances
+    if (DB.finances.transactions.length) {
+      addSection('Finances');
+      doc.autoTable({startY:y, head:[['Date','Description','Catégorie','Type','Montant']], body:DB.finances.transactions.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date);}).slice(0,30).map(function(t){return[fmtDate(t.date),t.desc||'-',t.categorie||'-',t.type,fmtMoney(t.montant)];}), theme:'grid', headStyles:hs, bodyStyles:bs, styles:ss}); y = doc.lastAutoTable.finalY + 10;
+    }
+    // Investissements
+    if (DB.investissements.comptes.length) {
+      addSection('Investissements');
+      doc.autoTable({startY:y, head:[['Type','Nom','Institution','Solde','Cible','%']], body:DB.investissements.comptes.map(function(c){return[c.type,c.nom,c.institution||'-',fmtMoney(c.solde),c.cible?fmtMoney(c.cible):'-',c.cible?Math.round(c.solde/c.cible*100)+'%':'-'];}), theme:'grid', headStyles:hs, bodyStyles:bs, styles:ss});
+    }
+    // Footer
+    var np = doc.internal.getNumberOfPages();
+    for (var i = 1; i <= np; i++) {
+      doc.setPage(i); doc.setFontSize(7); doc.setTextColor(74,106,138);
+      doc.text('FamilyOS · '+DB.famille.nom+' · Page '+i+'/'+np, W/2, doc.internal.pageSize.getHeight()-6, {align:'center'});
+    }
+    doc.save('FamilyOS_Rapport_'+today+'.pdf');
+    toast('Rapport PDF généré ✓');
+  } catch(e) { console.error(e); toast('Erreur PDF: '+e.message,'var(--red2)'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORT EXCEL
+// ═══════════════════════════════════════════════════════════════════════════
+function exporterExcel() {
+  if (!window.XLSX) { toast('Bibliothèque Excel non chargée — vérifiez votre connexion','var(--red2)'); return; }
+  try {
+    var WB = XLSX.utils.book_new();
+    var today = new Date().toLocaleDateString('fr-CA');
+    var rev = DB.finances.transactions.filter(function(t){return t.type==='Revenu';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+    var dep = DB.finances.transactions.filter(function(t){return t.type==='Dépense';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+    function addSheet(name, headers, rows) { XLSX.utils.book_append_sheet(WB, XLSX.utils.aoa_to_sheet([headers].concat(rows)), name); }
+    addSheet('Tableau de bord',['Indicateur','Valeur'],[['Famille',DB.famille.nom],['Date',today],['Membres',getMembres().length],['Tâches actives',DB.taches.items.filter(function(t){return t.statut!=='Terminé';}).length],['Objectifs',DB.objectifs.projets.length],['Revenus ($)',rev],['Dépenses ($)',dep],['Solde ($)',rev-dep]]);
+    addSheet('Membres',['Prénom','Nom','Rôle','Âge','Email'],getMembres().map(function(m){return[m.prenom,m.nom||'',m.role||'',m.age||'',m.email||''];}));
+    addSheet('Tâches',['Titre','Responsable','Priorité','Statut','Catégorie','Échéance'],DB.taches.items.map(function(t){return[t.titre,t.responsable||'',t.priorite||'',t.statut||'',t.categorie||'',t.echeance||''];}));
+    addSheet('Agenda',['Date','Événement','Heure','Lieu'],DB.taches.agenda.map(function(a){return[a.date||'',a.titre,a.heure||'',a.lieu||''];}));
+    addSheet('Objectifs',['Nom','Pilier','Responsable','Priorité','Statut','%','Début','Échéance','KPI','Risques'],DB.objectifs.projets.map(function(p){return[p.nom,p.pilier||'',p.responsable||'',p.priorite||'',p.statut||'',Number(p.pct)||0,p.debut||'',p.echeance||'',p.indicateurs||'',p.risques||''];}));
+    addSheet('Transactions',['Date','Description','Catégorie','Type','Montant ($)'],DB.finances.transactions.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date);}).map(function(t){return[t.date||'',t.desc||'',t.categorie||'',t.type,Number(t.montant)||0];}));
+    addSheet('Budget',['Catégorie','Budget ($)','Dépenses ($)','Écart ($)','% Utilisé'],DB.finances.budget.map(function(b){var d=DB.finances.transactions.filter(function(t){return t.categorie===b.categorie&&t.type==='Dépense';}).reduce(function(a,t){return a+Number(t.montant||0);},0);return[b.categorie,Number(b.montant)||0,d,Number(b.montant)-d,b.montant?Math.round(d/b.montant*100):0];}));
+    addSheet('Investissements',['Type','Nom','Institution','Solde ($)','Objectif ($)','% Atteint','Cotisation/mois ($)'],DB.investissements.comptes.map(function(c){return[c.type,c.nom,c.institution||'',Number(c.solde)||0,Number(c.cible)||0,c.cible?Math.round(c.solde/c.cible*100):0,Number(c.cotisation)||0];}));
+    addSheet('Éducation',['Nom','Pour','Type','Matière','Statut','%'],DB.education.programmes.map(function(p){return[p.nom,p.membre||'',p.type||'',p.matiere||'',p.statut||'',Number(p.pct)||0];}));
+    addSheet('Loisirs',['Titre','Type','Date','Lieu','Budget ($)','Statut'],DB.loisirs.activites.map(function(a){return[a.titre,a.type||'',a.date||'',a.lieu||'',Number(a.budget)||0,a.statut||''];}));
+    addSheet('Vacances',['Destination','Type','Départ','Retour','Budget ($)','Statut'],DB.loisirs.vacances.map(function(v){return[v.destination,v.type||'',v.depart||'',v.retour||'',Number(v.budget)||0,v.statut||''];}));
+    XLSX.writeFile(WB,'FamilyOS_Classeur_'+today+'.xlsx');
+    toast('Classeur Excel généré ✓');
+  } catch(e) { console.error(e); toast('Erreur Excel: '+e.message,'var(--red2)'); }
+}
+function exporterExcelFinances() {
+  if (!window.XLSX) { toast('Bibliothèque Excel non chargée','var(--red2)'); return; }
+  try {
+    var WB = XLSX.utils.book_new();
+    var today = new Date().toLocaleDateString('fr-CA');
+    var rev = DB.finances.transactions.filter(function(t){return t.type==='Revenu';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+    var dep = DB.finances.transactions.filter(function(t){return t.type==='Dépense';}).reduce(function(a,t){return a+Number(t.montant||0);},0);
+    XLSX.utils.book_append_sheet(WB,XLSX.utils.aoa_to_sheet([['Résumé',''],['Revenus',rev],['Dépenses',dep],['Solde',rev-dep]]),'Résumé');
+    XLSX.utils.book_append_sheet(WB,XLSX.utils.aoa_to_sheet([['Date','Description','Catégorie','Type','Montant']].concat(DB.finances.transactions.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date);}).map(function(t){return[t.date,t.desc,t.categorie,t.type,Number(t.montant)];}))),'Transactions');
+    XLSX.utils.book_append_sheet(WB,XLSX.utils.aoa_to_sheet([['Catégorie','Budget','Réel','Écart']].concat(DB.finances.budget.map(function(b){var d=DB.finances.transactions.filter(function(t){return t.categorie===b.categorie&&t.type==='Dépense';}).reduce(function(a,t){return a+Number(t.montant||0);},0);return[b.categorie,Number(b.montant),d,Number(b.montant)-d];}))),'Budget');
+    XLSX.writeFile(WB,'FamilyOS_Finances_'+today+'.xlsx');
+    toast('Finances exportées ✓');
+  } catch(e) { toast('Erreur: '+e.message,'var(--red2)'); }
+}
+
+
+// ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js')
+      .then(function(reg) { console.log('SW enregistré:', reg.scope); })
+      .catch(function(err) { console.log('SW erreur:', err); });
+  });
+}
+
+// Install prompt (Android Chrome)
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  var btn = document.getElementById('btn-install');
+  if (btn) btn.style.display = 'flex';
+});
+window.addEventListener('appinstalled', function() {
+  deferredPrompt = null;
+  var btn = document.getElementById('btn-install');
+  if (btn) btn.style.display = 'none';
+  toast('FamilyOS installé avec succès! 🎉');
+});
+function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(r) {
+    deferredPrompt = null;
+    var btn = document.getElementById('btn-install');
+    if (btn) btn.style.display = 'none';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EMAILJS — NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+function sauvegarderEmailJS() {
+  var pk  = document.getElementById('ejs-pubkey').value.trim();
+  var sid = document.getElementById('ejs-service').value.trim();
+  var tid = document.getElementById('ejs-template').value.trim();
+  if (!pk || !sid || !tid) return toast('Remplissez les 3 champs EmailJS','var(--red2)');
+  DB.parametres.emailjs_public_key  = pk;
+  DB.parametres.emailjs_service_id  = sid;
+  DB.parametres.emailjs_template_id = tid;
+  DB.parametres.emailjs_actif = true;
+  saveData();
+  if (window.emailjs) {
+    try { window.emailjs.init({publicKey: pk}); } catch(e) {}
+  }
+  toast('Configuration EmailJS sauvegardée ✓');
+  render();
+}
+
+function initEmailJS() {
+  var p = DB.parametres || {};
+  if (p.emailjs_actif && p.emailjs_public_key && window.emailjs) {
+    try { window.emailjs.init({publicKey: p.emailjs_public_key}); } catch(e) {}
+  }
+}
+
+function testerEmailJS() {
+  var p = DB.parametres || {};
+  if (!p.emailjs_actif || !p.emailjs_public_key) return toast('Sauvegardez d\'abord la configuration','var(--red2)');
+  var membres = getMembres().filter(function(m){ return m.email; });
+  if (!membres.length) return toast('Aucun membre avec un email — ajoutez un email dans la fiche membre','var(--red2)');
+  var m = membres[0];
+  envoyerEmail(m.email, m.prenom, {
+    titre: 'Test FamilyOS — Notifications actives',
+    priorite: 'Moyenne',
+    echeance: new Date().toLocaleDateString('fr-CA'),
+    description: 'Ceci est un email de test pour confirmer que les notifications EmailJS fonctionnent correctement.',
+    responsable: m.prenom
+  }, true);
+}
+
+function envoyerEmailTache(tache) {
+  var p = DB.parametres || {};
+  if (!p.emailjs_actif || !p.emailjs_public_key || !p.emailjs_service_id || !p.emailjs_template_id) return;
+  if (!window.emailjs) return;
+  var membre = getMembres().find(function(m){ return m.prenom === tache.responsable; });
+  if (!membre || !membre.email) return;
+  envoyerEmail(membre.email, membre.prenom, tache, false);
+}
+
+function envoyerEmail(toEmail, toName, tache, isTest) {
+  var p = DB.parametres || {};
+  if (!window.emailjs) { toast('EmailJS non chargé — vérifiez votre connexion','var(--red2)'); return; }
+  var params = {
+    to_email:       toEmail,
+    to_name:        toName,
+    task_title:     tache.titre,
+    task_priority:  tache.priorite || 'Normale',
+    task_deadline:  tache.echeance ? fmtDate(tache.echeance) : 'Non définie',
+    task_desc:      tache.description || 'Aucune description.',
+    task_category:  tache.categorie || '',
+    assigned_by:    DB.famille.nom,
+    family_name:    DB.famille.nom,
+    app_name:       'FamilyOS'
+  };
+  window.emailjs.send(p.emailjs_service_id, p.emailjs_template_id, params)
+    .then(function() {
+      if (isTest) toast('Email de test envoyé à ' + toEmail + ' ✓');
+      else toast('📧 Email envoyé à ' + toName + ' ✓');
+    })
+    .catch(function(err) {
+      console.error('EmailJS error:', err);
+      toast('Erreur envoi email : ' + (err.text || err.message || 'inconnue'),'var(--red2)');
+    });
+}
+
+// Rappels d'échéance — vérifie chaque jour au démarrage
+function verifierEcheances() {
+  var p = DB.parametres || {};
+  if (!p.emailjs_actif || !p.emailjs_public_key) return;
+  var demain = new Date();
+  demain.setDate(demain.getDate() + 1);
+  var demainStr = demain.toISOString().slice(0,10);
+  DB.taches.items.forEach(function(t) {
+    if (t.echeance === demainStr && t.statut !== 'Terminé' && t.responsable) {
+      var membre = getMembres().find(function(m){ return m.prenom === t.responsable; });
+      if (membre && membre.email) {
+        var rappel = Object.assign({}, t, {titre: '⏰ Rappel : ' + t.titre + ' (échéance demain)'});
+        envoyerEmail(membre.email, membre.prenom, rappel, false);
+      }
+    }
+  });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+render();
+initEmailJS();
+setTimeout(verifierEcheances, 3000);
+</script>
+</body>
+</html>

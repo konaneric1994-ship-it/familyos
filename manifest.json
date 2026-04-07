@@ -1,0 +1,22 @@
+{
+  "name": "FamilyOS — Gestionnaire Familial",
+  "short_name": "FamilyOS",
+  "description": "Gestionnaire familial complet avec méthode PMP — Spiritualité, Finances, Éducation, Investissements",
+  "start_url": "./FamilyOS.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0F1C2E",
+  "theme_color": "#D4A843",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["productivity", "lifestyle"],
+  "screenshots": [],
+  "shortcuts": [
+    { "name": "Tableau de bord", "url": "./FamilyOS.html#dashboard", "description": "Accueil" },
+    { "name": "Tâches", "url": "./FamilyOS.html#taches", "description": "Gérer les tâches" },
+    { "name": "Finances", "url": "./FamilyOS.html#finances", "description": "Gérer les finances" }
+  ]
+}
