@@ -1,25 +1,24 @@
-const CACHE_NAME = 'familyos-v2';
+// FamilyOS — Service Worker v3
+const CACHE_NAME = 'familyos-v3';
 const ASSETS = [
   './FamilyOS.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js'
+  './icon-512.png'
 ];
 
+// Installation — mise en cache des ressources
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(ASSETS.map(function(url) {
-        return new Request(url, { mode: 'no-cors' });
-      }));
+      return cache.addAll(ASSETS);
+    }).then(function() {
+      return self.skipWaiting();
     })
   );
-  self.skipWaiting();
 });
 
+// Activation — nettoyer les anciens caches
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
@@ -27,25 +26,40 @@ self.addEventListener('activate', function(e) {
         keys.filter(function(k) { return k !== CACHE_NAME; })
             .map(function(k) { return caches.delete(k); })
       );
+    }).then(function() {
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
+// Fetch — stratégie Cache-first avec fallback réseau
 self.addEventListener('fetch', function(e) {
+  // Ignorer les requêtes non-GET et les requêtes vers d'autres origines
+  if (e.request.method !== 'GET') return;
+  var url = new URL(e.request.url);
+  if (url.origin !== location.origin) return;
+
   e.respondWith(
     caches.match(e.request).then(function(cached) {
       if (cached) return cached;
       return fetch(e.request).then(function(response) {
-        if (!response || response.status !== 200) return response;
-        var clone = response.clone();
-        caches.open(CACHE_NAME).then(function(cache) {
-          cache.put(e.request, clone);
-        });
+        // Mettre en cache les nouvelles ressources locales
+        if (response.ok && url.origin === location.origin) {
+          var clone = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(e.request, clone);
+          });
+        }
         return response;
       }).catch(function() {
+        // Hors ligne — retourner l'app principale
         return caches.match('./FamilyOS.html');
       });
     })
   );
+});
+
+// Message pour forcer la mise à jour
+self.addEventListener('message', function(e) {
+  if (e.data === 'skipWaiting') self.skipWaiting();
 });

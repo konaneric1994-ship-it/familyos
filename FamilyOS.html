@@ -10,6 +10,10 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#D4A843"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <title>FamilyOS</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -49,6 +53,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--text);min-height
 .topbar-right{display:flex;align-items:center;gap:12px}
 .date-badge{background:var(--navy4);color:var(--text2);font-size:12px;padding:5px 12px;border-radius:20px}
 #content{flex:1;overflow-y:auto;padding:24px 28px}
+#content.chat-active{padding:0;overflow:hidden}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius2);padding:18px 20px;margin-bottom:16px}
 .card-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
 .card-title span{font-size:12px;font-weight:400;color:var(--text3)}
@@ -123,9 +128,52 @@ tr:last-child td{border-bottom:none}
 .theme-preview{cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid transparent;transition:border .2s}
 .theme-preview:hover{border-color:var(--text3)}
 .theme-preview.selected{border-color:var(--gold)}
+
+/* ── Thème clair ── */
+[data-theme="light"] body { color: var(--text); }
+[data-theme="light"] #sidebar { border-right-color: var(--border); }
+[data-theme="light"] .nav-item { color: var(--text2); }
+[data-theme="light"] .nav-item:hover { background: var(--navy3); color: var(--text); }
+[data-theme="light"] .nav-item.active { background: var(--navy4); color: var(--gold); }
+[data-theme="light"] .nav-section { color: var(--text3); }
+[data-theme="light"] .logo p { color: var(--text3); }
+[data-theme="light"] .sidebar-footer p { color: var(--text3); }
+[data-theme="light"] .card { border-color: var(--border); }
+[data-theme="light"] .card-title { color: var(--text); }
+[data-theme="light"] th { color: var(--text3); background: var(--navy3); }
+[data-theme="light"] td { color: var(--text2); border-bottom-color: var(--border); }
+[data-theme="light"] tr:hover td { background: var(--navy4); }
+[data-theme="light"] .stat-label { color: var(--text2); }
+[data-theme="light"] .stat-value { color: var(--text); }
+[data-theme="light"] .kpi { background: var(--navy3); }
+[data-theme="light"] .kpi-label { color: var(--text3); }
+[data-theme="light"] .tab { color: var(--text3); }
+[data-theme="light"] .tab.active { color: var(--text); background: var(--navy4); }
+[data-theme="light"] .tabs { background: var(--navy3); }
+[data-theme="light"] .badge-gray { background: rgba(0,0,0,0.08); color: var(--text2); }
+[data-theme="light"] .form-group label { color: var(--text3); }
+[data-theme="light"] .form-group input,
+[data-theme="light"] .form-group select,
+[data-theme="light"] .form-group textarea { background: var(--navy4); border-color: var(--border); color: var(--text); }
+[data-theme="light"] .modal { background: var(--card); }
+[data-theme="light"] .modal h3 { color: var(--text); }
+[data-theme="light"] .modal-actions { border-top-color: var(--border); }
+[data-theme="light"] .btn-outline { color: var(--text2); border-color: var(--border); }
+[data-theme="light"] .btn-outline:hover { background: var(--navy4); color: var(--text); }
+[data-theme="light"] .progress-bar { background: var(--navy3); }
+[data-theme="light"] .empty { color: var(--text3); }
+[data-theme="light"] .verse-box { background: var(--navy4); color: var(--text2); }
+[data-theme="light"] .agenda-day { background: var(--navy3); }
+[data-theme="light"] #topbar { background: var(--navy2); border-bottom-color: var(--border); }
+[data-theme="light"] #topbar h2 { color: var(--text); }
+[data-theme="light"] .date-badge { background: var(--navy4); color: var(--text2); }
+[data-theme="light"] select option { background: var(--card); color: var(--text); }
+/* Capteur couleur Windows — ne pas supprimer */
+#win-accent-sensor{position:absolute;width:1px;height:1px;background:AccentColor;opacity:0;pointer-events:none}
 </style>
 </head>
 <body>
+<div id="win-accent-sensor"></div>
 <nav id="sidebar">
   <div class="logo">
     <h1>🏠 FamilyOS</h1>
@@ -142,7 +190,10 @@ tr:last-child td{border-bottom:none}
   <button class="nav-item" data-page="objectifs"><span class="nav-icon">🎯</span>Objectifs</button>
   <button class="nav-item" data-page="taches"><span class="nav-icon">✅</span>Tâches & Agenda</button>
   <div class="nav-section">Système</div>
+  <button class="nav-item" data-page="chat"><span class="nav-icon">💬</span>Chat famille</button>
+  <button class="nav-item" data-page="autres"><span class="nav-icon">⛪</span>Groupe Église</button>
   <button class="nav-item" data-page="membres"><span class="nav-icon">👥</span>Membres</button>
+  <button class="nav-item" data-page="comptes"><span class="nav-icon">🔐</span>Accès & Sécurité</button>
   <button class="nav-item" data-page="parametres"><span class="nav-icon">⚙️</span>Paramètres</button>
   <div class="sidebar-footer">
     <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Exportation</div>
@@ -159,6 +210,7 @@ tr:last-child td{border-bottom:none}
     <h2 id="page-title">Tableau de bord</h2>
     <div class="topbar-right">
       <div class="date-badge" id="date-badge"></div>
+      <div id="user-badge" style="display:none;align-items:center;gap:8px"></div>
       <button id="btn-install" onclick="installPWA()" class="btn btn-gold btn-sm" style="display:none;gap:6px">📲 Installer l'app</button>
     </div>
   </div>
@@ -185,10 +237,28 @@ function defaultData() {
     objectifs: {projets:[]},
     taches: {items:[], agenda:[]},
     parametres: {theme:'sombre', couleurAccent:'#D4A843', couleurFond:'#0F1C2E', couleurSidebar:'#162233', couleurCarte:'#1A2B3E',
-      emailjs_public_key:'', emailjs_service_id:'', emailjs_template_id:'', emailjs_actif:false}
+      emailjs_public_key:'', emailjs_service_id:'', emailjs_template_id:'', emailjs_actif:false},
+    autres: {
+      eglise: {nom:'Mon Église', groupe:'Groupe de prière', jourSemaine:4},
+      membres: [],
+      programme: [
+        {id:'p1',ordre:1,titre:'Ouverture & Accueil',        duree:5,  responsable:'Directeur',notes:'Mot de bienvenue, annonces'},
+        {id:'p2',ordre:2,titre:'Louange & Adoration',        duree:15, responsable:'Musicien', notes:'3-4 cantiques de louange'},
+        {id:'p3',ordre:3,titre:'Lecture biblique',           duree:10, responsable:'Directeur',notes:'Passage du jour + bref commentaire'},
+        {id:'p4',ordre:4,titre:'Prière d\'intercession',     duree:20, responsable:'Groupe',   notes:'Sujets de prière collectifs'},
+        {id:'p5',ordre:5,titre:'Témoignages & Partage',      duree:10, responsable:'Membres',  notes:'Réponses de prière, encouragements'},
+        {id:'p6',ordre:6,titre:'Prière personnelle',         duree:10, responsable:'Groupe',   notes:'Temps de prière silencieuse'},
+        {id:'p7',ordre:7,titre:'Annonces & Bénédiction finale',duree:5,responsable:'Directeur',notes:'Clôture, prochaine rencontre'}
+      ],
+      rotations: [],
+      sujetsPriere: [],
+      historique: []
+    }
   };
 }
 var DB = loadData();
+function getJourRencontre(){var a=getAutres?getAutres():{};return (a.eglise&&a.eglise.jourSemaine!==undefined)?a.eglise.jourSemaine:4;}
+var JOURS_NOMS=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
 function hexToRgb(h) {
@@ -201,23 +271,61 @@ function lighten(hex, pct) {
   var f = pct/100;
   return 'rgb(' + Math.min(255,Math.round(c.r+(255-c.r)*f)) + ',' + Math.min(255,Math.round(c.g+(255-c.g)*f)) + ',' + Math.min(255,Math.round(c.b+(255-c.b)*f)) + ')';
 }
+function luminance(hex) {
+  var c = hexToRgb(hex);
+  if (!c) return 0;
+  return (0.299*c.r + 0.587*c.g + 0.114*c.b) / 255;
+}
+function darken(hex, pct) {
+  var c = hexToRgb(hex);
+  if (!c) return hex;
+  var f = pct/100;
+  return 'rgb(' + Math.max(0,Math.round(c.r*(1-f))) + ',' + Math.max(0,Math.round(c.g*(1-f))) + ',' + Math.max(0,Math.round(c.b*(1-f))) + ')';
+}
 function appliquerTheme() {
   var p = DB.parametres || {};
   var r = document.documentElement.style;
-  if (p.couleurFond) {
-    r.setProperty('--navy', p.couleurFond);
-    r.setProperty('--navy3', lighten(p.couleurFond, 8));
-    r.setProperty('--navy4', lighten(p.couleurFond, 14));
-  }
-  if (p.couleurSidebar) r.setProperty('--navy2', p.couleurSidebar);
-  if (p.couleurAccent) { r.setProperty('--gold', p.couleurAccent); r.setProperty('--gold2', p.couleurAccent); }
-  if (p.couleurCarte) r.setProperty('--card', p.couleurCarte);
-}
-appliquerTheme();
+  var fond = p.couleurFond || '#0F1C2E';
+  var sidebar = p.couleurSidebar || '#162233';
+  var accent = p.couleurAccent || '#D4A843';
+  var carte = p.couleurCarte || '#1A2B3E';
+  var isLight = luminance(fond) > 0.5;
 
+  r.setProperty('--navy', fond);
+  r.setProperty('--navy2', sidebar);
+  r.setProperty('--card', carte);
+  r.setProperty('--gold', accent);
+  r.setProperty('--gold2', accent);
+
+  if (isLight) {
+    // Thème clair — dériver navy3/navy4 en assombrissant
+    r.setProperty('--navy3', darken(fond, 6));
+    r.setProperty('--navy4', darken(fond, 10));
+    // Texte sombre lisible sur fond clair
+    r.setProperty('--text', '#1A1A2E');
+    r.setProperty('--text2', '#2C3E55');
+    r.setProperty('--text3', '#5A6A7A');
+    // Bordures visibles
+    r.setProperty('--border', 'rgba(0,0,0,0.12)');
+    // Carte avec ombre légère
+    r.setProperty('--card2', darken(carte, 4));
+    // Sidebar texte
+    document.documentElement.setAttribute('data-theme', 'light');
+  } else {
+    // Thème sombre — comportement original
+    r.setProperty('--navy3', lighten(fond, 8));
+    r.setProperty('--navy4', lighten(fond, 14));
+    r.setProperty('--text', '#E8EDF3');
+    r.setProperty('--text2', '#8FA8C8');
+    r.setProperty('--text3', '#4A6A8A');
+    r.setProperty('--border', 'rgba(255,255,255,0.08)');
+    r.setProperty('--card2', '#243548');
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+}
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
-var PAGES = {dashboard:pgDashboard, spirituel:pgSpirituels, education:pgEducation, finances:pgFinances, loisirs:pgLoisirs, investissements:pgInvestissements, objectifs:pgObjectifs, taches:pgTaches, membres:pgMembres, parametres:pgParametres};
-var TITLES = {dashboard:'Tableau de bord', spirituel:'Spiritualité', education:'Éducation & Formation', finances:'Finances', loisirs:'Divertissements', investissements:'Investissements', objectifs:'Objectifs (PMP)', taches:'Tâches & Agenda', membres:'Membres de la famille', parametres:'Paramètres'};
+var PAGES = {dashboard:pgDashboard, spirituel:pgSpirituels, education:pgEducation, finances:pgFinances, loisirs:pgLoisirs, investissements:pgInvestissements, objectifs:pgObjectifs, taches:pgTaches, membres:pgMembres, autres:pgAutres, chat:pgChat, comptes:pgComptes, parametres:pgParametres};
+var TITLES = {dashboard:'Tableau de bord', spirituel:'Spiritualité', education:'Éducation & Formation', finances:'Finances', loisirs:'Divertissements', investissements:'Investissements', objectifs:'Objectifs (PMP)', taches:'Tâches & Agenda', membres:'Membres de la famille', autres:'Groupe d\'Église — Programme de prière', chat:'Chat — Messagerie familiale', comptes:'Accès & Sécurité', parametres:'Paramètres'};
 var currentPage = 'dashboard';
 
 document.querySelectorAll('.nav-item').forEach(function(btn) {
@@ -226,13 +334,74 @@ document.querySelectorAll('.nav-item').forEach(function(btn) {
     btn.classList.add('active');
     currentPage = btn.dataset.page;
     document.getElementById('page-title').textContent = TITLES[currentPage];
+    var content = document.getElementById('content');
+    if (currentPage === 'chat') content.classList.add('chat-active');
+    else content.classList.remove('chat-active');
     render();
   });
 });
 
+// Mémorise l'onglet actif — clé = page courante
+var activeTabMap = {};
+
 function render() {
+  // 1. Avant de recharger, lire l'onglet visible
+  var prefixes = ['eg-','ta-','sp-','ed-','lo-'];
+  for (var pi=0; pi<prefixes.length; pi++) {
+    var els = document.querySelectorAll('[id^="'+prefixes[pi]+'"]');
+    for (var ei=0; ei<els.length; ei++) {
+      if (els[ei].style.display !== 'none') {
+        activeTabMap[currentPage] = els[ei].id;
+        break;
+      }
+    }
+    if (activeTabMap[currentPage]) break;
+  }
+
+  // 2. Recharger le contenu
   document.getElementById('content').innerHTML = PAGES[currentPage]();
   attachEvents();
+  // Scroll chat to bottom after render
+  if (currentPage === 'chat') {
+    setTimeout(function(){
+      initFirebaseChat();
+      var inp = document.getElementById('chat-input');
+      if (inp) inp.focus();
+    }, 300);
+  }
+
+  // 3. Restaurer l'onglet mémorisé
+  var savedTab = activeTabMap[currentPage];
+  if (savedTab) {
+    var targetEl = document.getElementById(savedTab);
+    if (targetEl) {
+      // Trouver le préfixe (ex: "eg-membres" → "eg-")
+      var dash = savedTab.indexOf('-');
+      var prefix = dash >= 0 ? savedTab.slice(0, dash+1) : savedTab;
+
+      // Masquer tous les panneaux du groupe, afficher le bon
+      document.querySelectorAll('[id^="'+prefix+'"]').forEach(function(el) {
+        el.style.display = (el.id === savedTab) ? '' : 'none';
+      });
+
+      // Activer le bon onglet dans la barre
+      document.querySelectorAll('.tab').forEach(function(tab) {
+        var onc = tab.getAttribute('onclick') || '';
+        var m = onc.match(/'([^']+)'/);
+        var tabId = m ? m[1] : '';
+        if (tabId === savedTab) {
+          tab.classList.add('active');
+        } else if (tabId.indexOf(prefix) === 0) {
+          tab.classList.remove('active');
+        }
+      });
+
+      // Re-render spéciaux
+      if (savedTab === 'ta-agenda') targetEl.innerHTML = renderCalendrier();
+      if (savedTab === 'ta-kanban') targetEl.innerHTML = renderKanban();
+      if (savedTab === 'ta-gantt')  targetEl.innerHTML = renderGantt();
+    }
+  }
 }
 
 // ─── DATE ─────────────────────────────────────────────────────────────────────
@@ -264,12 +433,19 @@ function navTo(p) { document.querySelector('[data-page="'+p+'"]').click(); }
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function switchTab(evt, target) {
-  var prefix = target.slice(0,3);
+  var dashIdx = target.indexOf('-');
+  var prefix = dashIdx >= 0 ? target.slice(0, dashIdx+1) : target;
   evt.target.closest('.tabs').querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
   evt.target.classList.add('active');
-  document.querySelectorAll('[id^="'+prefix+'-"]').forEach(function(el) {
+  document.querySelectorAll('[id^="'+prefix+'"]').forEach(function(el) {
     el.style.display = el.id === target ? '' : 'none';
   });
+  // Mémoriser l'onglet choisi pour la page courante
+  activeTabMap[currentPage] = target;
+  // Rendu à la demande
+  if (target === 'ta-agenda') { var ag=document.getElementById('ta-agenda'); if(ag) ag.innerHTML=renderCalendrier(); }
+  if (target === 'ta-kanban') { var kb=document.getElementById('ta-kanban'); if(kb) kb.innerHTML=renderKanban(); }
+  if (target === 'ta-gantt')  { var gt=document.getElementById('ta-gantt');  if(gt) gt.innerHTML=renderGantt(); }
 }
 function attachEvents() {
   document.querySelectorAll('.modal-bg').forEach(function(m) {
@@ -564,52 +740,354 @@ function pgObjectifs() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PAGE: TÂCHES & AGENDA
+// PAGE: TÂCHES & AGENDA — avec Calendrier, Kanban, Gantt
 // ═══════════════════════════════════════════════════════════════════════════
+var calMois = new Date().getMonth();
+var calAnnee = new Date().getFullYear();
+var KANBAN_COLS = DB.taches && DB.taches.kanbanCols ? DB.taches.kanbanCols : ['À faire','En cours','En attente','Bloqué','Terminé'];
+var KANBAN_COLORS = {'À faire':'#4A6A8A','En cours':'#4A88D4','En attente':'#D4943A','Bloqué':'#E05555','Terminé':'#3DAA7A'};
+var PRIO_COLORS = {Haute:'#E05555',Moyenne:'#D4A843',Basse:'#4A88D4'};
+
 function pgTaches() {
   var items = DB.taches.items;
-  var aFaire = items.filter(function(i){return i.statut==='À faire';});
-  var enCours = items.filter(function(i){return i.statut==='En cours';});
-  var termines = items.filter(function(i){return i.statut==='Terminé';});
-  var prochains = DB.taches.agenda.filter(function(a){return new Date(a.date)>=new Date();}).sort(function(a,b){return new Date(a.date)-new Date(b.date);}).slice(0,6);
-  var html = '<div class="tabs"><button class="tab active" onclick="switchTab(event,\'ta-taches\')">✅ Tâches</button><button class="tab" onclick="switchTab(event,\'ta-agenda\')">📅 Agenda</button></div>';
-  html += '<div id="ta-taches"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="display:flex;gap:8px"><span class="badge badge-gray">À faire: '+aFaire.length+'</span><span class="badge badge-blue">En cours: '+enCours.length+'</span><span class="badge badge-green">Terminés: '+termines.length+'</span></div><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-tache\')">+ Tâche</button></div>';
-  html += '<div class="grid2">';
+  var aFaire = items.filter(function(i){return i.statut==='À faire';}).length;
+  var enCours = items.filter(function(i){return i.statut==='En cours';}).length;
+  var termines = items.filter(function(i){return i.statut==='Terminé';}).length;
+  var html = '';
+  html += '<div class="tabs">';
+  html += '<button class="tab active" onclick="switchTab(event,\'ta-taches\')">✅ Tâches</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'ta-agenda\')">📅 Calendrier</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'ta-kanban\')">🗂 Kanban</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'ta-gantt\')">📊 Gantt</button>';
+  html += '</div>';
+
+  // ── TAB TÂCHES ────────────────────────────────────────────────────────────
+  html += '<div id="ta-taches">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html += '<div style="display:flex;gap:8px"><span class="badge badge-gray">À faire: '+aFaire+'</span><span class="badge badge-blue">En cours: '+enCours+'</span><span class="badge badge-green">Terminés: '+termines+'</span></div>';
+  html += '<button class="btn btn-gold btn-sm" onclick="openModal(\'modal-tache\')">+ Tâche</button>';
+  html += '</div><div class="grid2">';
+  // Actives
   html += '<div><div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">À faire & En cours</div>';
-  var actives = aFaire.concat(enCours).sort(function(a,b){ var o={Haute:0,Moyenne:1,Basse:2}; return (o[a.priorite]||1)-(o[b.priorite]||1); });
+  var actives = items.filter(function(i){return i.statut!=='Terminé';}).sort(function(a,b){var o={Haute:0,Moyenne:1,Basse:2};return(o[a.priorite]||1)-(o[b.priorite]||1);});
   if (actives.length) {
     actives.forEach(function(item) {
-      html += '<div class="card" style="margin-bottom:8px;padding:12px 14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><input type="checkbox" onchange="terminerTache(\''+item.id+'\')" style="width:15px;height:15px;cursor:pointer;accent-color:var(--gold)"/><span style="font-size:13px;font-weight:500;flex:1">'+item.titre+'</span>'+priorityBadge(item.priorite)+'</div><div style="font-size:11px;color:var(--text3);display:flex;gap:10px;padding-left:23px">'+(item.responsable?'<span>👤 '+item.responsable+'</span>':'')+(item.echeance?'<span>📅 '+fmtDate(item.echeance)+'</span>':'')+'</div><div style="padding-left:23px;margin-top:6px;display:flex;gap:6px">'+statutBadge(item.statut)+'<button class="btn btn-sm btn-outline" onclick="supprimerItem(\'taches\',\'items\',\''+item.id+'\')">✕</button></div></div>';
+      var retard = item.echeance && new Date(item.echeance+'T12:00:00') < new Date() ? 'border-left:3px solid var(--red);' : '';
+      html += '<div class="card" style="margin-bottom:8px;padding:12px 14px;'+retard+'">';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><input type="checkbox" onchange="terminerTache(\''+item.id+'\')" style="width:15px;height:15px;cursor:pointer;accent-color:var(--gold)"/>';
+      html += '<span style="font-size:13px;font-weight:500;flex:1">'+item.titre+'</span>'+priorityBadge(item.priorite)+'</div>';
+      html += '<div style="font-size:11px;color:var(--text3);display:flex;gap:10px;flex-wrap:wrap;padding-left:23px">';
+      if (item.responsable) html += '<span>👤 '+item.responsable+'</span>';
+      if (item.echeance) html += '<span style="color:'+(new Date(item.echeance+'T12:00:00')<new Date()?'var(--red)':'var(--text3)')+'">📅 '+fmtDate(item.echeance)+'</span>';
+      if (item.categorie) html += '<span>🏷 '+item.categorie+'</span>';
+      html += '</div>';
+      html += '<div style="padding-left:23px;margin-top:6px;display:flex;gap:6px;align-items:center">';
+      html += statutBadge(item.statut);
+      html += '<select onchange="changerStatutTache(\''+item.id+'\',this.value)" style="font-size:11px;padding:2px 6px;border-radius:6px;border:1px solid var(--border);background:var(--navy4);color:var(--text2);cursor:pointer">';
+      ['À faire','En cours','En attente','Bloqué','Terminé'].forEach(function(s){ html += '<option'+(s===item.statut?' selected':'')+'>'+s+'</option>'; });
+      html += '</select>';
+      html += '<button class="btn btn-sm btn-outline" onclick="supprimerItem(\'taches\',\'items\',\''+item.id+'\')">✕</button>';
+      html += '</div></div>';
     });
   } else { html += '<div class="empty">Toutes les tâches sont terminées! 🎉</div>'; }
   html += '</div>';
+  // Terminées
   html += '<div><div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Récemment terminées</div>';
-  if (termines.length) {
-    termines.slice(-6).forEach(function(item) {
-      html += '<div class="card" style="margin-bottom:6px;padding:10px 14px;opacity:.7"><div style="display:flex;align-items:center;gap:8px"><input type="checkbox" checked onchange="deTerminerTache(\''+item.id+'\')" style="width:14px;height:14px;accent-color:var(--green)"/><span style="font-size:13px;text-decoration:line-through;color:var(--text3)">'+item.titre+'</span><span class="badge badge-green" style="margin-left:auto">✓</span></div></div>';
+  var dones = items.filter(function(i){return i.statut==='Terminé';});
+  if (dones.length) {
+    dones.slice(-8).forEach(function(item) {
+      html += '<div class="card" style="margin-bottom:6px;padding:10px 14px;opacity:.7"><div style="display:flex;align-items:center;gap:8px"><input type="checkbox" checked onchange="deTerminerTache(\''+item.id+'\')" style="width:14px;height:14px;accent-color:var(--green)"/><span style="font-size:13px;text-decoration:line-through;color:var(--text3);flex:1">'+item.titre+'</span><span class="badge badge-green">✓</span></div></div>';
     });
   } else { html += '<div class="empty">Aucune tâche terminée.</div>'; }
   html += '</div></div></div>';
-  // Agenda
-  html += '<div id="ta-agenda" style="display:none"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="font-size:15px;color:var(--text)">Agenda familial</h3><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-agenda\')">+ Événement</button></div>';
-  if (prochains.length) {
-    html += '<div style="margin-bottom:16px"><div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Prochains événements</div>';
-    prochains.forEach(function(a) {
-      html += '<div class="agenda-day"><div class="agenda-day-title">'+fmtDate(a.date)+'</div><div class="agenda-item"><div class="agenda-dot" style="background:'+(a.couleur||'var(--blue)')+'"></div><div style="flex:1"><span style="font-size:13px;font-weight:500">'+a.titre+'</span>'+(a.heure?'<span style="font-size:12px;color:var(--text3);margin-left:8px">'+a.heure+'</span>':'')+(a.lieu?'<span style="font-size:12px;color:var(--text3);margin-left:8px">📍 '+a.lieu+'</span>':'')+'</div><button class="btn btn-sm btn-outline" onclick="supprimerItem(\'taches\',\'agenda\',\''+a.id+'\')">✕</button></div></div>';
+
+  // ── TAB CALENDRIER ────────────────────────────────────────────────────────
+  html += '<div id="ta-agenda" style="display:none">';
+  html += renderCalendrier();
+  html += '</div>';
+
+  // ── TAB KANBAN ────────────────────────────────────────────────────────────
+  html += '<div id="ta-kanban" style="display:none">';
+  html += renderKanban();
+  html += '</div>';
+
+  // ── TAB GANTT ─────────────────────────────────────────────────────────────
+  html += '<div id="ta-gantt" style="display:none">';
+  html += renderGantt();
+  html += '</div>';
+
+  // ── MODALS ────────────────────────────────────────────────────────────────
+  html += '<div class="modal-bg" id="modal-tache"><div class="modal"><h3>✅ Nouvelle tâche</h3><div class="form-row"><div class="form-group"><label>Titre</label><input id="tc-titre" placeholder="Description courte"/></div><div class="form-group"><label>Responsable</label><select id="tc-resp">'+membreOptions()+'</select></div></div><div class="form-row"><div class="form-group"><label>Description</label><textarea id="tc-desc" placeholder="Détails..."></textarea></div></div><div class="form-row"><div class="form-group"><label>Priorité</label><select id="tc-prio"><option>Haute</option><option selected>Moyenne</option><option>Basse</option></select></div><div class="form-group"><label>Statut</label><select id="tc-statut"><option>À faire</option><option>En cours</option><option>En attente</option></select></div></div><div class="form-row"><div class="form-group"><label>Catégorie</label><select id="tc-cat"><option>Général</option><option>Spirituel</option><option>Éducation</option><option>Finance</option><option>Santé</option><option>Maison</option><option>Administratif</option></select></div><div class="form-group"><label>Début</label><input type="date" id="tc-debut"/></div></div><div class="form-row"><div class="form-group"><label>Échéance</label><input type="date" id="tc-echeance"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-tache\')">Annuler</button><button class="btn btn-gold" onclick="ajouterTache()">Créer</button></div></div></div>';
+  html += '<div class="modal-bg" id="modal-agenda"><div class="modal"><h3>📅 Nouvel événement</h3><div class="form-row"><div class="form-group"><label>Titre</label><input id="ag-titre" placeholder="Nom de l\'événement"/></div><div class="form-group"><label>Date</label><input type="date" id="ag-date"/></div></div><div class="form-row"><div class="form-group"><label>Heure</label><input type="time" id="ag-heure"/></div><div class="form-group"><label>Lieu</label><input id="ag-lieu" placeholder="Où?"/></div></div><div class="form-row"><div class="form-group"><label>Couleur</label><select id="ag-couleur"><option value="#4A88D4">Bleu</option><option value="#3DAA7A">Vert</option><option value="#D4A843">Or</option><option value="#E05555">Rouge</option><option value="#9A6ADA">Violet</option></select></div></div><div class="form-row"><div class="form-group"><label>Notes</label><textarea id="ag-notes"></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-agenda\')">Annuler</button><button class="btn btn-gold" onclick="ajouterAgenda()">Ajouter</button></div></div></div>';
+  html += '<div class="modal-bg" id="modal-kanban-col"><div class="modal"><h3>🗂 Nouvelle colonne Kanban</h3><div class="form-row"><div class="form-group"><label>Nom de la colonne</label><input id="kc-nom" placeholder="Ex: En révision"/></div></div><div class="form-row"><div class="form-group"><label>Couleur</label><input type="color" id="kc-color" value="#4A88D4"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-kanban-col\')">Annuler</button><button class="btn btn-gold" onclick="ajouterColonneKanban()">Ajouter</button></div></div></div>';
+  return html;
+}
+
+// ── CALENDRIER ──────────────────────────────────────────────────────────────
+function renderCalendrier() {
+  var html = '';
+  var moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var joursNoms = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  var today = new Date();
+  var todayStr = today.toISOString().slice(0,10);
+  // Header
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  html += '<button class="btn btn-outline btn-sm" onclick="calNav(-1)">◀ Préc.</button>';
+  html += '<div style="display:flex;align-items:center;gap:12px">';
+  html += '<span style="font-size:16px;font-weight:600">'+moisNoms[calMois]+' '+calAnnee+'</span>';
+  html += '<button class="btn btn-outline btn-sm" onclick="calNav(0)">Aujourd\'hui</button>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:8px"><button class="btn btn-outline btn-sm" onclick="calNav(1)">Suiv. ▶</button><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-agenda\')">+ Événement</button></div>';
+  html += '</div>';
+  // Légende couleurs
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;font-size:11px">';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E05555;display:inline-block"></span>Tâche Haute</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#D4A843;display:inline-block"></span>Tâche Moyenne</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#4A88D4;display:inline-block"></span>Tâche Basse</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#3DAA7A;display:inline-block"></span>Terminée</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#9A6ADA;display:inline-block"></span>Événement</span>';
+  html += '</div>';
+  // Grille jours
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">';
+  joursNoms.forEach(function(j){ html += '<div style="text-align:center;font-size:11px;font-weight:600;color:var(--text3);padding:4px">'+j+'</div>'; });
+  html += '</div>';
+  // Calculer 1er jour du mois
+  var premier = new Date(calAnnee, calMois, 1);
+  var offset = (premier.getDay()+6)%7; // lundi=0
+  var nbJours = new Date(calAnnee, calMois+1, 0).getDate();
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+  // Cellules vides avant
+  for (var i=0;i<offset;i++) html += '<div style="min-height:80px;background:var(--navy4);border-radius:6px;opacity:.3"></div>';
+  // Jours
+  for (var d=1;d<=nbJours;d++) {
+    var dateStr = calAnnee+'-'+(calMois+1<10?'0':'')+(calMois+1)+'-'+(d<10?'0':'')+d;
+    var isToday = dateStr===todayStr;
+    var tachesDuJour = DB.taches.items.filter(function(t){return t.echeance===dateStr;});
+    var eventsDuJour = DB.taches.agenda.filter(function(a){return a.date===dateStr;});
+    var hasItems = tachesDuJour.length>0 || eventsDuJour.length>0;
+    html += '<div style="min-height:80px;background:'+(isToday?'rgba(212,168,67,.15)':'var(--navy3)')+';border-radius:6px;padding:5px;border:'+(isToday?'1px solid var(--gold)':'1px solid transparent')+';overflow:hidden">';
+    html += '<div style="font-size:12px;font-weight:'+(isToday?'700':'500')+';color:'+(isToday?'var(--gold)':'var(--text2)')+';margin-bottom:3px">'+d+'</div>';
+    // Tâches
+    tachesDuJour.slice(0,3).forEach(function(t){
+      var col = t.statut==='Terminé' ? '#3DAA7A' : (PRIO_COLORS[t.priorite]||'#4A88D4');
+      html += '<div style="background:'+col+'22;border-left:2px solid '+col+';border-radius:3px;padding:2px 4px;margin-bottom:2px;font-size:10px;color:'+col+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="'+t.titre+(t.responsable?' — '+t.responsable:'')+'">';
+      html += t.titre;
+      html += '</div>';
+    });
+    if (tachesDuJour.length>3) html += '<div style="font-size:9px;color:var(--text3)">+'+( tachesDuJour.length-3)+' tâche(s)</div>';
+    // Événements agenda
+    eventsDuJour.slice(0,2).forEach(function(a){
+      html += '<div style="background:'+(a.couleur||'#9A6ADA')+'22;border-left:2px solid '+(a.couleur||'#9A6ADA')+';border-radius:3px;padding:2px 4px;margin-bottom:2px;font-size:10px;color:'+(a.couleur||'#9A6ADA')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+a.titre+'">';
+      html += (a.heure?a.heure+' ':'')+a.titre;
+      html += '</div>';
     });
     html += '</div>';
   }
-  if (DB.taches.agenda.length) {
-    var sortedAg = DB.taches.agenda.slice().sort(function(a,b){return new Date(a.date)-new Date(b.date);});
-    html += '<div class="table-wrap"><table><tr><th>Date</th><th>Événement</th><th>Heure</th><th>Lieu</th><th></th></tr>';
-    sortedAg.forEach(function(a) { html += '<tr><td>'+fmtDate(a.date)+'</td><td style="font-weight:500">'+a.titre+'</td><td>'+(a.heure||'-')+'</td><td>'+(a.lieu||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="supprimerItem(\'taches\',\'agenda\',\''+a.id+'\')">✕</button></td></tr>'; });
-    html += '</table></div>';
-  } else if (!prochains.length) { html += '<div class="empty">Aucun événement. Commencez à planifier!</div>'; }
+  // Cellules vides après
+  var total = offset+nbJours;
+  var reste = total%7===0 ? 0 : 7-(total%7);
+  for (var j=0;j<reste;j++) html += '<div style="min-height:80px;background:var(--navy4);border-radius:6px;opacity:.3"></div>';
   html += '</div>';
-  // Modals
-  html += '<div class="modal-bg" id="modal-tache"><div class="modal"><h3>✅ Nouvelle tâche</h3><div class="form-row"><div class="form-group"><label>Titre</label><input id="tc-titre" placeholder="Description courte"/></div><div class="form-group"><label>Responsable</label><select id="tc-resp">'+membreOptions()+'</select></div></div><div class="form-row"><div class="form-group"><label>Description</label><textarea id="tc-desc" placeholder="Détails..."></textarea></div></div><div class="form-row"><div class="form-group"><label>Priorité</label><select id="tc-prio"><option>Haute</option><option selected>Moyenne</option><option>Basse</option></select></div><div class="form-group"><label>Statut</label><select id="tc-statut"><option>À faire</option><option>En cours</option><option>En attente</option></select></div></div><div class="form-row"><div class="form-group"><label>Catégorie</label><select id="tc-cat"><option>Général</option><option>Spirituel</option><option>Éducation</option><option>Finance</option><option>Santé</option><option>Maison</option><option>Administratif</option></select></div><div class="form-group"><label>Échéance</label><input type="date" id="tc-echeance"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-tache\')">Annuler</button><button class="btn btn-gold" onclick="ajouterTache()">Créer</button></div></div></div>'
-  + '<div class="modal-bg" id="modal-agenda"><div class="modal"><h3>📅 Nouvel événement</h3><div class="form-row"><div class="form-group"><label>Titre</label><input id="ag-titre" placeholder="Nom de l\'événement"/></div><div class="form-group"><label>Date</label><input type="date" id="ag-date"/></div></div><div class="form-row"><div class="form-group"><label>Heure</label><input type="time" id="ag-heure"/></div><div class="form-group"><label>Lieu</label><input id="ag-lieu" placeholder="Où?"/></div></div><div class="form-row"><div class="form-group"><label>Couleur</label><select id="ag-couleur"><option value="#4A88D4">Bleu</option><option value="#3DAA7A">Vert</option><option value="#D4A843">Or</option><option value="#E05555">Rouge</option><option value="#9A6ADA">Violet</option></select></div></div><div class="form-row"><div class="form-group"><label>Notes</label><textarea id="ag-notes"></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-agenda\')">Annuler</button><button class="btn btn-gold" onclick="ajouterAgenda()">Ajouter</button></div></div></div>';
+  // Liste événements du mois
+  var evtsMois = DB.taches.agenda.filter(function(a){
+    var d = new Date(a.date+'T12:00:00');
+    return d.getMonth()===calMois && d.getFullYear()===calAnnee;
+  }).sort(function(a,b){return new Date(a.date)-new Date(b.date);});
+  if (evtsMois.length) {
+    html += '<div style="margin-top:16px"><div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Événements de ce mois</div>';
+    evtsMois.forEach(function(a){
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--navy3);border-radius:8px;margin-bottom:6px">';
+      html += '<div style="width:10px;height:10px;border-radius:50%;background:'+(a.couleur||'var(--blue)')+';flex-shrink:0"></div>';
+      html += '<div style="flex:1"><span style="font-size:13px;font-weight:500">'+a.titre+'</span>';
+      if (a.heure) html += '<span style="font-size:11px;color:var(--text3);margin-left:8px">'+a.heure+'</span>';
+      if (a.lieu) html += '<span style="font-size:11px;color:var(--text3);margin-left:8px">📍 '+a.lieu+'</span>';
+      html += '</div><span style="font-size:12px;color:var(--text3)">'+fmtDate(a.date)+'</span>';
+      html += '<button class="btn btn-sm btn-outline" onclick="supprimerItem(\'taches\',\'agenda\',\''+a.id+'\')">✕</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
   return html;
+}
+
+// ── KANBAN ──────────────────────────────────────────────────────────────────
+function renderKanban() {
+  if (!DB.taches.kanbanCols) DB.taches.kanbanCols = ['À faire','En cours','En attente','Bloqué','Terminé'];
+  if (!DB.taches.kanbanColors) DB.taches.kanbanColors = {};
+  var cols = DB.taches.kanbanCols;
+  var colors = DB.taches.kanbanColors;
+  var html = '';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html += '<span style="font-size:13px;color:var(--text2)">Glissez ou changez le statut de chaque carte</span>';
+  html += '<div style="display:flex;gap:8px"><button class="btn btn-outline btn-sm" onclick="openModal(\'modal-kanban-col\')">+ Colonne</button><button class="btn btn-gold btn-sm" onclick="openModal(\'modal-tache\')">+ Tâche</button></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;align-items:flex-start">';
+  cols.forEach(function(col) {
+    var colColor = colors[col] || KANBAN_COLORS[col] || '#4A6A8A';
+    var cartes = DB.taches.items.filter(function(t){return t.statut===col;});
+    html += '<div style="flex:0 0 220px;background:var(--navy3);border-radius:12px;padding:12px;border-top:3px solid '+colColor+'">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+    html += '<span style="font-size:13px;font-weight:600;color:'+colColor+'">'+col+'</span>';
+    html += '<div style="display:flex;align-items:center;gap:6px">';
+    html += '<span style="font-size:11px;background:'+colColor+'22;color:'+colColor+';padding:2px 8px;border-radius:10px;font-weight:600">'+cartes.length+'</span>';
+    if (col !== 'À faire' && col !== 'Terminé') {
+      html += '<button class="btn btn-sm btn-outline" style="padding:2px 6px;font-size:10px" onclick="supprimerColonneKanban(\''+col+'\')">✕</button>';
+    }
+    html += '</div></div>';
+    // Cartes
+    cartes.forEach(function(t) {
+      var pCol = PRIO_COLORS[t.priorite]||'#4A6A8A';
+      var retard = t.echeance && new Date(t.echeance+'T12:00:00') < new Date() && col!=='Terminé';
+      html += '<div style="background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid '+pCol+';'+(retard?'border-right:3px solid var(--red);':'')+'">';
+      html += '<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px">'+t.titre+'</div>';
+      if (t.responsable||t.echeance) {
+        html += '<div style="font-size:11px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">';
+        if (t.responsable) html += '<span>👤 '+t.responsable+'</span>';
+        if (t.echeance) html += '<span style="color:'+(retard?'var(--red)':'var(--text3)')+'">📅 '+fmtDate(t.echeance)+'</span>';
+        html += '</div>';
+      }
+      html += '<div style="display:flex;gap:4px;flex-wrap:wrap">';
+      // Boutons déplacer vers colonnes adjacentes
+      var idx = cols.indexOf(col);
+      if (idx>0) html += '<button class="btn btn-sm btn-outline" style="font-size:10px;padding:2px 6px" onclick="deplacerTache(\''+t.id+'\',\''+cols[idx-1]+'\')">◀ '+cols[idx-1].slice(0,6)+'</button>';
+      if (idx<cols.length-1) html += '<button class="btn btn-sm btn-outline" style="font-size:10px;padding:2px 6px" onclick="deplacerTache(\''+t.id+'\',\''+cols[idx+1]+'\')">'+cols[idx+1].slice(0,6)+' ▶</button>';
+      html += '<button class="btn btn-sm btn-outline" style="font-size:10px;padding:2px 6px;margin-left:auto" onclick="supprimerItem(\'taches\',\'items\',\''+t.id+'\')">✕</button>';
+      html += '</div></div>';
+    });
+    if (!cartes.length) html += '<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3);border:1px dashed var(--border);border-radius:8px">Vide</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  // Légende priorités
+  html += '<div style="display:flex;gap:14px;margin-top:12px;font-size:11px;color:var(--text3)">';
+  html += '<span>Priorité : </span>';
+  ['Haute','Moyenne','Basse'].forEach(function(p){ html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:'+PRIO_COLORS[p]+';display:inline-block"></span>'+p+'</span>'; });
+  html += '<span style="margin-left:8px">🔴 = En retard</span>';
+  html += '</div>';
+  return html;
+}
+
+// ── GANTT ──────────────────────────────────────────────────────────────────
+function renderGantt() {
+  var html = '';
+  var today = new Date(); today.setHours(0,0,0,0);
+  // Rassembler tâches + objectifs avec dates
+  var items = [];
+  DB.taches.items.forEach(function(t){
+    if (t.echeance) {
+      var debut = t.debut ? new Date(t.debut+'T12:00:00') : new Date(today.getTime()-7*86400000);
+      items.push({id:t.id,nom:t.titre,debut:debut,fin:new Date(t.echeance+'T12:00:00'),type:'tache',priorite:t.priorite,statut:t.statut,responsable:t.responsable||''});
+    }
+  });
+  DB.objectifs.projets.forEach(function(p){
+    if (p.echeance) {
+      var debut = p.debut ? new Date(p.debut+'T12:00:00') : new Date(today.getTime()-14*86400000);
+      items.push({id:p.id,nom:p.nom,debut:debut,fin:new Date(p.echeance+'T12:00:00'),type:'objectif',priorite:p.priorite,statut:p.statut,pct:p.pct||0,responsable:p.responsable||''});
+    }
+  });
+  if (!items.length) {
+    return '<div class="empty">Aucune tâche ou objectif avec date d\'échéance.<br>Ajoutez des dates pour voir le Gantt.</div>';
+  }
+  // Calculer plage de dates
+  var minDate = items.reduce(function(m,i){return i.debut<m?i.debut:m;}, items[0].debut);
+  var maxDate = items.reduce(function(m,i){return i.fin>m?i.fin:m;}, items[0].fin);
+  minDate = new Date(Math.min(minDate.getTime(), today.getTime()-7*86400000));
+  maxDate = new Date(Math.max(maxDate.getTime(), today.getTime()+7*86400000));
+  var totalDays = Math.ceil((maxDate-minDate)/(86400000));
+  var scale = Math.max(1, Math.min(3, 840/totalDays)); // px par jour, max 3
+  var barW = Math.round(totalDays*scale);
+  // Header
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html += '<span style="font-size:13px;color:var(--text2)">'+items.length+' éléments · tâches et objectifs</span>';
+  html += '<button class="btn btn-gold btn-sm" onclick="openModal(\'modal-tache\')">+ Tâche</button>';
+  html += '</div>';
+  // Conteneur scroll
+  html += '<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">';
+  // Timeline header — semaines
+  var LBL_W = 180;
+  html += '<div style="display:flex;background:var(--navy3);border-bottom:1px solid var(--border);min-width:'+(LBL_W+barW+20)+'px">';
+  html += '<div style="width:'+LBL_W+'px;flex-shrink:0;padding:8px 12px;font-size:11px;font-weight:600;color:var(--text3)">ÉLÉMENT</div>';
+  html += '<div style="flex:1;position:relative;height:32px;overflow:hidden">';
+  // Générer étiquettes semaines
+  var cur = new Date(minDate);
+  while (cur <= maxDate) {
+    var x = Math.round((cur-minDate)/86400000*scale);
+    var lbl = cur.toLocaleDateString('fr-CA',{month:'short',day:'numeric'});
+    html += '<div style="position:absolute;left:'+x+'px;top:8px;font-size:10px;color:var(--text3);white-space:nowrap">'+lbl+'</div>';
+    cur = new Date(cur.getTime()+7*86400000);
+  }
+  html += '</div></div>';
+  // Lignes
+  items.forEach(function(item,idx) {
+    var isOdd = idx%2===0;
+    var startX = Math.max(0,Math.round((item.debut-minDate)/86400000*scale));
+    var endX = Math.round((item.fin-minDate)/86400000*scale);
+    var width = Math.max(8, endX-startX);
+    var barColor = item.type==='objectif' ? '#9A6ADA' : (PRIO_COLORS[item.priorite]||'#4A88D4');
+    if (item.statut==='Terminé') barColor = '#3DAA7A';
+    var retard = item.fin < today && item.statut!=='Terminé';
+    if (retard) barColor = '#E05555';
+    html += '<div style="display:flex;align-items:center;background:'+(isOdd?'var(--navy4)':'var(--navy3)')+';border-bottom:1px solid var(--border);min-width:'+(LBL_W+barW+20)+'px;min-height:38px">';
+    html += '<div style="width:'+LBL_W+'px;flex-shrink:0;padding:6px 12px;overflow:hidden">';
+    html += '<div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+item.nom+'">'+( item.type==='objectif'?'🎯 ':'')+item.nom+'</div>';
+    html += '<div style="font-size:10px;color:var(--text3)">'+( item.responsable||'')+(item.pct!==undefined?' · '+item.pct+'%':'')+'</div>';
+    html += '</div>';
+    // Barre
+    html += '<div style="flex:1;position:relative;height:38px;padding:6px 0">';
+    // Ligne aujourd'hui
+    var todayX = Math.round((today-minDate)/86400000*scale);
+    if (todayX>=0 && todayX<=barW) html += '<div style="position:absolute;left:'+todayX+'px;top:0;bottom:0;width:1px;background:rgba(212,168,67,.5)"></div>';
+    // Barre tâche
+    html += '<div style="position:absolute;left:'+startX+'px;top:8px;width:'+width+'px;height:22px;background:'+barColor+';border-radius:4px;display:flex;align-items:center;overflow:hidden" title="'+item.nom+' · '+fmtDate(item.debut.toISOString().slice(0,10))+' → '+fmtDate(item.fin.toISOString().slice(0,10))+'">';
+    if (item.pct) html += '<div style="height:100%;width:'+item.pct+'%;background:rgba(255,255,255,.25);border-radius:4px 0 0 4px"></div>';
+    html += '<span style="position:absolute;left:6px;font-size:10px;color:#fff;white-space:nowrap;overflow:hidden">'+item.nom.slice(0,22)+'</span>';
+    html += '</div>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  // Légende
+  html += '<div style="display:flex;gap:14px;margin-top:10px;font-size:11px;color:var(--text3);flex-wrap:wrap">';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:8px;border-radius:2px;background:#E05555;display:inline-block"></span>Haute / Retard</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:8px;border-radius:2px;background:#D4A843;display:inline-block"></span>Moyenne</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:8px;border-radius:2px;background:#4A88D4;display:inline-block"></span>Basse</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:8px;border-radius:2px;background:#9A6ADA;display:inline-block"></span>Objectif</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:8px;border-radius:2px;background:#3DAA7A;display:inline-block"></span>Terminé</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:1px;height:12px;background:rgba(212,168,67,.7);display:inline-block"></span>Aujourd\'hui</span>';
+  html += '</div>';
+  return html;
+}
+
+// ── ACTIONS VUES ──────────────────────────────────────────────────────────
+function calNav(dir) {
+  if (dir===0) { calMois=new Date().getMonth(); calAnnee=new Date().getFullYear(); }
+  else { calMois+=dir; if(calMois>11){calMois=0;calAnnee++;} if(calMois<0){calMois=11;calAnnee--;} }
+  document.getElementById('ta-agenda').innerHTML = renderCalendrier();
+}
+function changerStatutTache(id, statut) {
+  var t = DB.taches.items.find(function(i){return i.id===id;});
+  if (t) { t.statut=statut; saveData(); render(); }
+}
+function deplacerTache(id, statut) {
+  var t = DB.taches.items.find(function(i){return i.id===id;});
+  if (t) { t.statut=statut; saveData(); document.getElementById('ta-kanban').innerHTML = renderKanban(); toast('Déplacé vers "'+statut+'" ✓'); }
+}
+function ajouterColonneKanban() {
+  var nom = document.getElementById('kc-nom').value.trim();
+  var color = document.getElementById('kc-color').value;
+  if (!nom) return toast('Saisissez un nom','var(--red2)');
+  if (!DB.taches.kanbanCols) DB.taches.kanbanCols=['À faire','En cours','En attente','Bloqué','Terminé'];
+  if (!DB.taches.kanbanColors) DB.taches.kanbanColors={};
+  if (DB.taches.kanbanCols.indexOf(nom)<0) DB.taches.kanbanCols.splice(DB.taches.kanbanCols.length-1,0,nom);
+  DB.taches.kanbanColors[nom]=color;
+  saveData(); closeModal('modal-kanban-col');
+  document.getElementById('ta-kanban').innerHTML = renderKanban();
+  toast('Colonne ajoutée ✓');
+}
+function supprimerColonneKanban(nom) {
+  if (!confirm('Supprimer la colonne "'+nom+'" ? Les tâches seront déplacées vers "À faire".')) return;
+  DB.taches.kanbanCols = DB.taches.kanbanCols.filter(function(c){return c!==nom;});
+  DB.taches.items.forEach(function(t){if(t.statut===nom)t.statut='À faire';});
+  saveData(); document.getElementById('ta-kanban').innerHTML = renderKanban(); toast('Colonne supprimée ✓','var(--red2)');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -625,6 +1103,13 @@ function pgMembres() {
       var col = avatarColor(m.prenom);
       html += '<div class="card" style="border-top:3px solid '+col+'"><div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><div style="width:52px;height:52px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:'+col+';flex-shrink:0">'+initiales(m)+'</div><div><div style="font-size:15px;font-weight:600">'+m.prenom+' '+(m.nom||'')+'</div><div style="font-size:12px;color:var(--text3)">'+(m.role||'Membre')+(m.age?' · '+m.age+' ans':'')+'</div></div></div>';
       if (m.email) { html += '<div class="stat-row"><div class="stat-label">Email</div><div style="color:var(--blue);font-size:12px">'+m.email+'</div></div>'; }
+      if (m.telephone) {
+        var telPropre = m.telephone.replace(/[\s\-().]/g,'');
+        html += '<div class="stat-row"><div class="stat-label">Téléphone</div><div style="display:flex;gap:6px;align-items:center"><span style="font-size:12px">'+m.telephone+'</span>';
+        html += '<a href="sms:'+telPropre+'" style="text-decoration:none"><span class="badge badge-blue" style="font-size:10px;cursor:pointer">📱 SMS</span></a>';
+        html += '<a href="https://wa.me/'+telPropre+'" target="_blank" style="text-decoration:none"><span class="badge badge-green" style="font-size:10px;cursor:pointer">💬 WA</span></a>';
+        html += '</div></div>';
+      }
       html += '<div style="margin-top:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">Tâches assignées ('+tachesM.length+')</div>';
       if (tachesM.length) {
         html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
@@ -638,7 +1123,7 @@ function pgMembres() {
     html += '<div class="card" style="grid-column:1/-1"><div class="empty">Aucun membre enregistré. Ajoutez les membres de votre famille pour leur assigner des tâches.</div></div>';
   }
   html += '</div>';
-  html += '<div class="modal-bg" id="modal-membre"><div class="modal"><h3>👤 Nouveau membre</h3><div class="form-row"><div class="form-group"><label>Prénom *</label><input id="mb-prenom" placeholder="Prénom"/></div><div class="form-group"><label>Nom</label><input id="mb-nom" placeholder="Nom de famille"/></div></div><div class="form-row"><div class="form-group"><label>Rôle</label><select id="mb-role"><option>Parent</option><option>Enfant</option><option>Tuteur</option><option>Autre</option></select></div><div class="form-group"><label>Âge</label><input type="number" id="mb-age" placeholder="Âge"/></div></div><div class="form-row"><div class="form-group"><label>Email</label><input type="email" id="mb-email" placeholder="email@exemple.com"/></div></div><div class="form-row"><div class="form-group"><label>Responsabilités</label><textarea id="mb-resp" placeholder="Ex: Gestion des finances..."></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-membre\')">Annuler</button><button class="btn btn-gold" onclick="ajouterMembre()">Ajouter</button></div></div></div>'
+  html += '<div class="modal-bg" id="modal-membre"><div class="modal"><h3>👤 Nouveau membre</h3><div class="form-row"><div class="form-group"><label>Prénom *</label><input id="mb-prenom" placeholder="Prénom"/></div><div class="form-group"><label>Nom</label><input id="mb-nom" placeholder="Nom de famille"/></div></div><div class="form-row"><div class="form-group"><label>Rôle</label><select id="mb-role"><option>Parent</option><option>Enfant</option><option>Tuteur</option><option>Autre</option></select></div><div class="form-group"><label>Âge</label><input type="number" id="mb-age" placeholder="Âge"/></div></div><div class="form-row"><div class="form-group"><label>Email</label><input type="email" id="mb-email" placeholder="email@exemple.com"/></div></div><div class="form-row"><div class="form-group"><label>📱 Téléphone (avec indicatif)</label><input type="tel" id="mb-tel" placeholder="+1 613 555 0123"/></div></div><div class="form-row"><div class="form-group"><label>Responsabilités</label><textarea id="mb-resp" placeholder="Ex: Gestion des finances..."></textarea></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-membre\')">Annuler</button><button class="btn btn-gold" onclick="ajouterMembre()">Ajouter</button></div></div></div>'
   + '<div class="modal-bg" id="modal-famille-nom"><div class="modal"><h3>✏️ Nom de la famille</h3><div class="form-row"><div class="form-group"><label>Nom de la famille</label><input id="fn-nom" value="'+DB.famille.nom+'"/></div></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-famille-nom\')">Annuler</button><button class="btn btn-gold" onclick="renommerFamille()">Enregistrer</button></div></div></div>';
   return html;
 }
@@ -653,8 +1138,8 @@ var THEMES = [
   {id:'bordeaux',label:'Bordeaux',      fond:'#1A0A10', sidebar:'#2A1020', accent:'#C85580', carte:'#221018'},
   {id:'ardoise', label:'Ardoise',       fond:'#1A1A2E', sidebar:'#16213E', accent:'#9A6ADA', carte:'#1F2040'},
   {id:'cafe',    label:'Café chaud',    fond:'#1C1108', sidebar:'#2A1A0A', accent:'#D4943A', carte:'#22180A'},
-  {id:'clair',   label:'Clarté',        fond:'#F0F4F8', sidebar:'#E0E8F0', accent:'#2A68B4', carte:'#FFFFFF'},
-  {id:'creme',   label:'Crème',         fond:'#F5F0E8', sidebar:'#EDE5D8', accent:'#8B5E3C', carte:'#FFFDF8'}
+  {id:'clair',   label:'Clarté',        fond:'#F0F4F8', sidebar:'#DDE5EF', accent:'#2A68B4', carte:'#E4EBF5'},
+  {id:'creme',   label:'Crème',         fond:'#F5F0E8', sidebar:'#E8E0D0', accent:'#8B5E3C', carte:'#EDE5D5'}
 ];
 function pgParametres() {
   var p = DB.parametres || {};
@@ -679,6 +1164,16 @@ function pgParametres() {
   html += '</div></div>';
   // Custom colors
   html += '<div class="card"><div class="card-title">🖌️ Couleurs personnalisées</div><div style="display:flex;flex-direction:column;gap:14px">';
+  // Windows accent color button
+  html += '<div style="background:var(--navy3);border-radius:10px;padding:12px 14px">';
+  html += '<div style="font-size:13px;font-weight:500;margin-bottom:4px">🪟 Utiliser les couleurs Windows</div>';
+  html += '<div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6">Synchronise automatiquement la couleur d\'accentuation de Windows (Paramètres → Personnalisation → Couleurs) avec FamilyOS.</div>';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<button class="btn btn-gold" style="flex:1" onclick="utiliserCouleursWindows()">🎨 Détecter couleur Windows</button>';
+  html += '<div id="win-color-preview" style="width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:'+(p.windowsAccentColor||'transparent')+';flex-shrink:0"></div>';
+  html += '</div>';
+  html += '<div id="win-color-status" style="font-size:11px;color:var(--text3);margin-top:6px">'+(p.windowsAccentColor?'Dernière couleur détectée : <strong>'+p.windowsAccentColor+'</strong>':'Cliquez pour détecter la couleur Windows')+'</div>';
+  html += '</div>';
   html += colorPicker('cp-fond', 'Couleur de fond', 'Arrière-plan principal', p.couleurFond||'#0F1C2E', 'fond');
   html += colorPicker('cp-sidebar', 'Barre latérale', 'Menu de navigation', p.couleurSidebar||'#162233', 'sidebar');
   html += colorPicker('cp-accent', 'Couleur d\'accentuation', 'Boutons et titres', p.couleurAccent||'#D4A843', 'accent');
@@ -866,10 +1361,16 @@ function ajouterTache() {
   var echeance = document.getElementById('tc-echeance').value;
   var priorite = document.getElementById('tc-prio').value;
   var desc = document.getElementById('tc-desc').value;
-  var tache = {id:uid(), titre:t, responsable:responsable, description:desc, priorite:priorite, statut:document.getElementById('tc-statut').value, categorie:document.getElementById('tc-cat').value, echeance:echeance};
+  var tache = {id:uid(), titre:t, responsable:responsable, description:desc, priorite:priorite, statut:document.getElementById('tc-statut').value, categorie:document.getElementById('tc-cat').value, debut:document.getElementById('tc-debut').value, echeance:echeance};
   DB.taches.items.push(tache);
   saveData(); closeModal('modal-tache'); render(); toast('Tâche créée ✓');
-  if (responsable) envoyerEmailTache(tache);
+  if (responsable) {
+    envoyerEmailTache(tache);
+    var membre = getMembres().find(function(m){ return m.prenom === responsable; });
+    if (membre && membre.telephone) {
+      afficherModalNotifMobile(tache, membre);
+    }
+  }
 }
 function terminerTache(id) {
   var t = DB.taches.items.find(function(i){return i.id===id;});
@@ -894,7 +1395,7 @@ function ajouterAgenda() {
 function ajouterMembre() {
   var p = document.getElementById('mb-prenom').value.trim();
   if (!p) return toast('Saisissez un prénom','var(--red2)');
-  DB.famille.membres.push({id:uid(),prenom:p,nom:document.getElementById('mb-nom').value,role:document.getElementById('mb-role').value,age:document.getElementById('mb-age').value,email:document.getElementById('mb-email').value,responsabilites:document.getElementById('mb-resp').value});
+  DB.famille.membres.push({id:uid(),prenom:p,nom:document.getElementById('mb-nom').value,role:document.getElementById('mb-role').value,age:document.getElementById('mb-age').value,email:document.getElementById('mb-email').value,telephone:document.getElementById('mb-tel').value,responsabilites:document.getElementById('mb-resp').value});
   saveData(); closeModal('modal-membre'); render(); toast('Membre ajouté ✓');
 }
 function supprimerMembre(id) {
@@ -918,11 +1419,15 @@ function appliquerThemePreset(themeId) {
   saveData(); appliquerTheme(); render(); toast('Thème "'+t.label+'" appliqué ✓');
 }
 function previewColor(champ, valeur) {
-  var r = document.documentElement.style;
-  if (champ==='fond') { r.setProperty('--navy',valeur); r.setProperty('--navy3',lighten(valeur,8)); r.setProperty('--navy4',lighten(valeur,14)); }
-  if (champ==='sidebar') r.setProperty('--navy2',valeur);
-  if (champ==='accent') { r.setProperty('--gold',valeur); r.setProperty('--gold2',valeur); }
-  if (champ==='carte') r.setProperty('--card',valeur);
+  var p = Object.assign({}, DB.parametres || {});
+  if (champ==='fond') p.couleurFond = valeur;
+  if (champ==='sidebar') p.couleurSidebar = valeur;
+  if (champ==='accent') p.couleurAccent = valeur;
+  if (champ==='carte') p.couleurCarte = valeur;
+  var saved = DB.parametres;
+  DB.parametres = p;
+  appliquerTheme();
+  DB.parametres = saved;
 }
 function sauvegarderCouleurs() {
   var fnd = document.getElementById('cp-fond').value;
@@ -1054,11 +1559,16 @@ function exporterExcelFinances() {
 
 // ─── PWA SERVICE WORKER ───────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js')
-      .then(function(reg) { console.log('SW enregistré:', reg.scope); })
-      .catch(function(err) { console.log('SW erreur:', err); });
-  });
+  var swUrl = window.location.href;
+  var isLocal = swUrl.startsWith('file://');
+  var isPreview = swUrl.includes('claudeusercontent') || swUrl.includes('claude.ai');
+  if (!isLocal && !isPreview) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('./sw.js')
+        .then(function(reg) { console.log('SW enregistré:', reg.scope); })
+        .catch(function(err) { console.log('SW non disponible:', err.message); });
+    });
+  }
 }
 
 // Install prompt (Android Chrome)
@@ -1086,8 +1596,106 @@ function installPWA() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// EMAILJS — NOTIFICATIONS
+// COULEURS WINDOWS
 // ═══════════════════════════════════════════════════════════════════════════
+function utiliserCouleursWindows() {
+  // Méthode 1 : CSS accent-color (Edge/Chrome sur Windows 11)
+  var accentHex = getWindowsAccentCSS();
+
+  if (accentHex) {
+    appliquerAccentWindows(accentHex);
+  } else {
+    // Méthode 2 : media query prefers-color-scheme + canvas trick
+    accentHex = getAccentViaCanvas();
+    if (accentHex) {
+      appliquerAccentWindows(accentHex);
+    } else {
+      // Méthode 3 : demander à l'utilisateur de choisir dans le sélecteur
+      toast('Détection auto non disponible — utilisez le sélecteur de couleur ci-dessous','var(--amber)');
+      var status = document.getElementById('win-color-status');
+      if (status) status.innerHTML = '⚠️ Ouvrez <strong>Paramètres Windows → Personnalisation → Couleurs</strong> puis copiez la couleur dans le sélecteur "Couleur d\'accentuation" ci-dessous.';
+    }
+  }
+}
+
+function getWindowsAccentCSS() {
+  try {
+    // Créer un élément temporaire et lire la couleur accent CSS du système
+    var el = document.createElement('div');
+    el.style.cssText = 'position:absolute;width:1px;height:1px;background:AccentColor;visibility:hidden';
+    document.body.appendChild(el);
+    var color = window.getComputedStyle(el).backgroundColor;
+    document.body.removeChild(el);
+    if (color && color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent' && color.startsWith('rgb')) {
+      return rgbStringToHex(color);
+    }
+  } catch(e) {}
+  return null;
+}
+
+function getAccentViaCanvas() {
+  try {
+    // Lire la CSS variable --accent-color si disponible (Edge PWA)
+    var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+    if (accent && accent.startsWith('#')) return accent;
+    // Essayer accent-color via un input range
+    var input = document.createElement('input');
+    input.type = 'range';
+    input.style.cssText = 'position:absolute;opacity:0;pointer-events:none';
+    document.body.appendChild(input);
+    var thumbColor = window.getComputedStyle(input).accentColor;
+    document.body.removeChild(input);
+    if (thumbColor && thumbColor !== 'auto' && thumbColor.startsWith('rgb')) {
+      return rgbStringToHex(thumbColor);
+    }
+  } catch(e) {}
+  return null;
+}
+
+function rgbStringToHex(rgb) {
+  var m = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+  if (!m) return null;
+  return '#' + [m[1],m[2],m[3]].map(function(v) {
+    return ('0'+parseInt(v).toString(16)).slice(-2);
+  }).join('');
+}
+
+function appliquerAccentWindows(hex) {
+  // Générer fond sombre harmonieux basé sur l'accent Windows
+  var c = hexToRgb(hex);
+  if (!c) return;
+  // Fond : version très sombre de l'accent
+  var fond = 'rgb('+Math.round(c.r*0.08)+','+Math.round(c.g*0.08)+','+Math.round(c.b*0.08)+')';
+  // Sidebar : légèrement plus clair
+  var sidebar = 'rgb('+Math.round(c.r*0.12)+','+Math.round(c.g*0.12)+','+Math.round(c.b*0.12)+')';
+  // Carte : intermédiaire
+  var carte = 'rgb('+Math.round(c.r*0.15)+','+Math.round(c.g*0.15)+','+Math.round(c.b*0.15)+')';
+
+  DB.parametres = Object.assign(DB.parametres||{}, {
+    theme: 'windows',
+    couleurAccent: hex,
+    couleurFond: fond,
+    couleurSidebar: sidebar,
+    couleurCarte: carte,
+    windowsAccentColor: hex
+  });
+  saveData();
+  appliquerTheme();
+  render();
+  toast('Couleur Windows appliquée : ' + hex + ' ✓');
+}
+
+// Écouter les changements de couleur Windows en temps réel (Edge PWA)
+if (window.matchMedia) {
+  try {
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    mq.addEventListener('change', function() {
+      if (DB.parametres && DB.parametres.theme === 'windows') {
+        utiliserCouleursWindows();
+      }
+    });
+  } catch(e) {}
+}
 function sauvegarderEmailJS() {
   var pk  = document.getElementById('ejs-pubkey').value.trim();
   var sid = document.getElementById('ejs-service').value.trim();
@@ -1180,10 +1788,1636 @@ function verifierEcheances() {
   });
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-render();
-initEmailJS();
+// ═══════════════════════════════════════════════════════════════════════════
+// WHATSAPP & SMS
+// ═══════════════════════════════════════════════════════════════════════════
+function formatTelephoneWA(tel) {
+  // Retire tout sauf les chiffres et le + initial
+  return tel.replace(/[^\d+]/g,'').replace(/^\+/,'');
+}
+
+function buildMessage(tache) {
+  var msg = '🏠 *FamilyOS — ' + DB.famille.nom + '*\n\n';
+  msg += '📌 *Nouvelle tâche assignée*\n\n';
+  msg += '📋 *' + tache.titre + '*\n';
+  msg += '⚡ Priorité : ' + (tache.priorite||'Normale') + '\n';
+  if (tache.echeance) msg += '📅 Échéance : ' + fmtDate(tache.echeance) + '\n';
+  if (tache.categorie) msg += '📂 Catégorie : ' + tache.categorie + '\n';
+  if (tache.description) msg += '📝 ' + tache.description + '\n';
+  msg += '\n— FamilyOS';
+  return msg;
+}
+
+function envoyerWhatsApp(tacheId, tel) {
+  var tache = DB.taches.items.find(function(t){return t.id===tacheId;});
+  if (!tache || !tel) return;
+  var numero = formatTelephoneWA(tel);
+  var msg = encodeURIComponent(buildMessage(tache));
+  window.open('https://wa.me/' + numero + '?text=' + msg, '_blank');
+  toast('WhatsApp ouvert ✓');
+}
+
+function envoyerSMS(tacheId, tel) {
+  var tache = DB.taches.items.find(function(t){return t.id===tacheId;});
+  if (!tache || !tel) return;
+  var msg = encodeURIComponent(buildMessage(tache).replace(/\*/g,''));
+  // sms: fonctionne sur Android, iOS et Windows (Phone Link)
+  var isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  var sep = isMobile && /iPhone|iPad/i.test(navigator.userAgent) ? '&' : '?';
+  window.location.href = 'sms:' + tel + sep + 'body=' + msg;
+  toast('SMS ouvert ✓');
+}
+
+function afficherModalNotifMobile(tache, membre) {
+  // Créer modal dynamique de notification mobile
+  var existing = document.getElementById('modal-notif-mobile');
+  if (existing) existing.remove();
+  var tel = membre.telephone || '';
+  var telPropre = formatTelephoneWA(tel);
+  var modal = document.createElement('div');
+  modal.id = 'modal-notif-mobile';
+  modal.className = 'modal-bg open';
+  modal.innerHTML = '<div class="modal" style="max-width:420px">'
+    + '<h3>📲 Notifier ' + membre.prenom + '</h3>'
+    + '<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Tâche <strong>"' + tache.titre + '"</strong> créée. Souhaitez-vous notifier ' + membre.prenom + ' via :</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">'
+    + '<button class="btn btn-green" style="width:100%;justify-content:center;font-size:14px" onclick="envoyerWhatsApp(\'' + tache.id + '\',\'' + tel + '\');document.getElementById(\'modal-notif-mobile\').remove()">💬 WhatsApp — ' + (tel||'') + '</button>'
+    + '<button class="btn btn-blue" style="width:100%;justify-content:center;font-size:14px;background:var(--blue2);color:#fff" onclick="envoyerSMS(\'' + tache.id + '\',\'' + tel + '\');document.getElementById(\'modal-notif-mobile\').remove()">📱 SMS — ' + (tel||'') + '</button>'
+    + '<button class="btn btn-outline" style="width:100%;justify-content:center" onclick="document.getElementById(\'modal-notif-mobile\').remove()">⏭ Passer (email déjà envoyé)</button>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--text3);text-align:center">L\'email a déjà été envoyé automatiquement si EmailJS est configuré.</div>'
+    + '</div>';
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+// Boutons rapides WhatsApp/SMS depuis la liste des membres
+function notifierMembreWhatsApp(membreId, tacheId) {
+  var m = getMembres().find(function(m){return m.id===membreId;});
+  var t = DB.taches.items.find(function(t){return t.id===tacheId;});
+  if (m && t && m.telephone) envoyerWhatsApp(t.id, m.telephone);
+  else toast('Numéro de téléphone manquant — ajoutez-le dans la fiche membre','var(--red2)');
+}
+
+// Rappels d'échéance via WhatsApp — appelé au démarrage
+function verifierEcheancesWhatsApp() {
+  var demain = new Date();
+  demain.setDate(demain.getDate()+1);
+  var demainStr = demain.toISOString().slice(0,10);
+  DB.taches.items.forEach(function(t) {
+    if (t.echeance===demainStr && t.statut!=='Terminé' && t.responsable) {
+      var membre = getMembres().find(function(m){return m.prenom===t.responsable;});
+      if (membre && membre.telephone) {
+        var rappel = Object.assign({},t,{titre:'⏰ Rappel échéance demain : '+t.titre});
+        // On propose via toast — pas d'envoi automatique WhatsApp (nécessite interaction)
+        toast('📅 Rappel : tâche "'+t.titre+'" échéance demain pour '+membre.prenom, 'var(--amber)');
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: GROUPE ÉGLISE — PROGRAMME TOURNANT DE PRIÈRE
+// ═══════════════════════════════════════════════════════════════════════════
+function getAutres() {
+  if (!DB.autres) {
+    DB.autres = {
+      eglise:{nom:'Mon Église',groupe:'Groupe de prière'},
+      membres:[],
+      programme:[
+        {id:'p1',ordre:1,titre:'Ouverture & Accueil',         duree:5, responsable:'Directeur',notes:'Mot de bienvenue, annonces'},
+        {id:'p2',ordre:2,titre:'Louange & Adoration',         duree:15,responsable:'Musicien', notes:'3-4 cantiques de louange'},
+        {id:'p3',ordre:3,titre:'Lecture biblique',            duree:10,responsable:'Directeur',notes:'Passage du jour + bref commentaire'},
+        {id:'p4',ordre:4,titre:'Prière d\'intercession',      duree:20,responsable:'Groupe',   notes:'Sujets de prière collectifs'},
+        {id:'p5',ordre:5,titre:'Témoignages & Partage',       duree:10,responsable:'Membres',  notes:'Réponses de prière, encouragements'},
+        {id:'p6',ordre:6,titre:'Prière personnelle',          duree:10,responsable:'Groupe',   notes:'Temps de prière silencieuse'},
+        {id:'p7',ordre:7,titre:'Annonces & Bénédiction finale',duree:5,responsable:'Directeur',notes:'Clôture, prochaine rencontre'}
+      ],
+      rotations:[],sujetsPriere:[],historique:[]
+    };
+  }
+  return DB.autres;
+}
+
+function pgAutres() {
+  var a = getAutres();
+  var html = '<div class="tabs">';
+  html += '<button class="tab active" onclick="switchTab(event,\'eg-programme\')">📋 Programme</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'eg-rotation\')">🔄 Rotation</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'eg-membres\')">👥 Membres</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'eg-sujets\')">🙏 Sujets de prière</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'eg-historique\')">📜 Historique</button>';
+  html += '</div>';
+
+  // ── PROGRAMME ──────────────────────────────────────────────────────────
+  html += '<div id="eg-programme">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  html += '<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px">'+a.eglise.nom+' · '+a.eglise.groupe+'</div>';
+  html += '<div style="font-size:13px;color:var(--text2)">Rencontres hebdomadaires — <strong style="color:var(--gold)">'+JOURS_NOMS[getJourRencontre()]+'s</strong></div></div>';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<button class="btn btn-outline btn-sm" onclick="openModal(\'modal-eg-info\')">✏️ Infos</button>';
+  html += '<button class="btn btn-gold btn-sm" onclick="genererRotation()">🔄 Générer</button>';
+  html += '<button class="btn btn-outline btn-sm" onclick="openModal(\'modal-eg-rotation-manuel\')">+ Manuel</button>';
+  html += '<button class="btn btn-green btn-sm" onclick="imprimerCalendrierRotation()">🖨 PDF</button>';
+  html += '</div></div>';
+  // Prochaine rencontre
+  var procJeudi = prochainJeudi();
+  var dirIdx = rotationActuelle();
+  html += '<div style="background:var(--navy3);border-radius:10px;padding:10px 16px;margin-bottom:14px;display:flex;gap:20px;flex-wrap:wrap">';
+  html += '<div style="font-size:13px;color:var(--text2)">📅 Prochain : <strong style="color:var(--gold)">'+procJeudi+'</strong></div>';
+  if (a.membres.length && dirIdx!==null) html += '<div style="font-size:13px;color:var(--text2)">🎤 Directeur ce '+JOURS_NOMS[getJourRencontre()].toLowerCase()+' : <strong style="color:var(--purple)">'+a.membres[dirIdx%a.membres.length].prenom+'</strong></div>';
+  html += '</div>';
+  // Calendrier des 2 mois
+  html += renderCalendrierRotation2Mois(a);
+  html += '</div>';
+
+  html += '<div id="eg-rotation" style="display:none">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  html += '<h3 style="font-size:15px">Programme tournant — '+JOURS_NOMS[getJourRencontre()]+'s</h3>';
+  html += '<div style="display:flex;gap:8px"><button class="btn btn-gold btn-sm" onclick="genererRotation()">🔄 Générer (fin déc.)</button><button class="btn btn-outline btn-sm" onclick="openModal(\'modal-eg-rotation-manuel\')">+ Manuel</button><button class="btn btn-green btn-sm" onclick="imprimerTableauRotation()">🖨 PDF</button></div>';
+  html += '</div>';
+  if (!a.membres.length) {
+    html += '<div class="empty">Ajoutez d\'abord vos membres dans l\'onglet Membres puis cliquez Générer.</div>';
+  } else if (!a.rotations.length) {
+    html += '<div style="text-align:center;padding:32px;background:var(--navy3);border-radius:12px"><div style="font-size:32px;margin-bottom:10px">🔄</div><div style="font-size:14px;color:var(--text2);margin-bottom:16px">Chaque membre dirige à tour de rôle chaque '+JOURS_NOMS[getJourRencontre()].toLowerCase()+'.<br>Cliquez Générer pour créer le programme jusqu\'au 31 décembre.</div><button class="btn btn-gold" onclick="genererRotation()">🔄 Générer le programme tournant</button></div>';
+  } else {
+    var prochain = a.rotations.find(function(r){ return r.date >= new Date().toISOString().slice(0,10); });
+    if (prochain) {
+      var col0 = avatarColorStr(prochain.directeur);
+      html += '<div style="margin-bottom:14px;background:rgba(154,106,218,.1);border:1px solid rgba(154,106,218,.25);border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">';
+      html += '<div style="font-size:12px;color:var(--purple);font-weight:600">PROCHAINE RENCONTRE</div>';
+      html += '<div style="font-size:18px;font-weight:700;color:var(--gold)">'+fmtDate(prochain.date)+'</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:'+col0+'22;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:'+col0+'">'+prochain.directeur.slice(0,1).toUpperCase()+'</div><span style="font-size:14px;font-weight:600;color:var(--text)">'+prochain.directeur+'</span></div>';
+      if (prochain.theme) html += '<span style="font-size:12px;color:var(--text3)">📖 '+prochain.theme+'</span>';
+      html += '</div>';
+    }
+    html += '<div class="table-wrap"><table><tr><th>#</th><th>Date ('+JOURS_NOMS[getJourRencontre()]+')</th><th>Directeur</th><th>Thème de la rencontre</th><th>Statut</th><th></th></tr>';
+    a.rotations.forEach(function(r, idx) {
+      var isPast = r.date < new Date().toISOString().slice(0,10);
+      var isToday = r.date === new Date().toISOString().slice(0,10);
+      var col = avatarColorStr(r.directeur);
+      var memOpts = a.membres.map(function(m){ return '<option value="'+m.prenom+'"'+(m.prenom===r.directeur?' selected':'')+'>'+m.prenom+' '+(m.nom||'')+'</option>'; }).join('');
+      html += '<tr style="'+(isPast&&!isToday?'opacity:.55':'')+'"><td style="font-weight:700;color:var(--gold)">'+(idx+1)+'</td>';
+      html += '<td style="font-weight:500">'+fmtDate(r.date)+'</td>';
+      html += '<td><div style="display:flex;align-items:center;gap:8px"><div style="width:26px;height:26px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:'+col+'">'+r.directeur.slice(0,1)+'</div>';
+      // Sélecteur de directeur inline
+      html += '<select onchange="updateRotationDirecteur(\''+r.id+'\',this.value)" style="font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--navy4);color:var(--text);cursor:pointer">'+memOpts+'</select>';
+      html += '</div></td>';
+      html += '<td><input value="'+(r.theme||'')+'" onchange="updateRotationTheme(\''+r.id+'\',this.value)" style="font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--navy4);color:var(--text2);width:100%" placeholder="Thème..."/></td>';
+      html += '<td>'+(isToday?'<span class="badge badge-gold">Aujourd\'hui</span>':isPast?'<span class="badge badge-gray">Passé</span>':'<span class="badge badge-blue">À venir</span>')+'</td>';
+      html += '<td><button class="btn btn-sm btn-outline" onclick="supprimerRotation(\''+r.id+'\')">✕</button></td></tr>';
+    });
+    html += '</table></div>';
+  }
+  html += '</div>';
+
+  // ── MEMBRES ─────────────────────────────────────────────────────────────
+  html += '<div id="eg-membres" style="display:none">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html += '<div><span style="font-size:15px;font-weight:600">'+a.membres.length+' membre'+(a.membres.length!==1?'s':'')+' du groupe</span>';
+  html += '<span style="font-size:12px;color:var(--text3);margin-left:10px">Ordre = ordre de rotation</span></div>';
+  html += '<button class="btn btn-gold" onclick="openModal(\'modal-eg-membre\')">+ Ajouter</button></div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">';
+  if (a.membres.length) {
+    a.membres.forEach(function(m,idx){
+      var col=avatarColorStr(m.prenom);
+      var prochRot=a.rotations.filter(function(r){return r.directeur===m.prenom&&new Date(r.date+'T12:00:00')>=new Date();}).slice(0,1)[0];
+      html+='<div class="card" style="border-top:3px solid '+col+';padding:14px">';
+      html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
+      html+='<div style="width:42px;height:42px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+col+'">'+m.prenom.slice(0,1).toUpperCase()+'</div>';
+      html+='<div style="flex:1"><div style="font-size:14px;font-weight:600">'+m.prenom+' '+(m.nom||'')+'</div>';
+      html+='<div style="font-size:11px;color:var(--text3)">'+(m.role||'Membre')+'</div></div>';
+      html+='<span onclick="editOrdreEglise('+idx+','+a.membres.length+',\''+m.id+'\')" title="Cliquer pour changer le numéro" style="font-size:12px;background:'+col+'22;color:'+col+';padding:2px 8px;border-radius:10px;font-weight:700;cursor:pointer" title="Cliquer pour modifier l\'ordre">#'+(idx+1)+' ✏</span>';
+      html+='</div>';
+      if(m.email) html+='<div style="font-size:11px;color:var(--text3);margin-bottom:2px">✉️ '+m.email+'</div>';
+      if(m.telephone) html+='<div style="font-size:11px;color:var(--text3);margin-bottom:6px">📱 '+m.telephone+'</div>';
+      if(prochRot) html+='<div style="font-size:11px;background:rgba(154,106,218,.1);color:var(--purple);padding:4px 8px;border-radius:6px;margin-bottom:8px">🎤 Prochain tour : '+fmtDate(prochRot.date)+'</div>';
+      html+='<div style="display:flex;gap:5px">';
+      html+='<button class="btn btn-sm btn-outline" style="flex:1" onclick="monterMembreEglise('+idx+')">▲</button>';
+      html+='<button class="btn btn-sm btn-outline" style="flex:1" onclick="descendreMembreEglise('+idx+')">▼</button>';
+      html+='<button class="btn btn-sm btn-gold" style="flex:1" onclick="editMembreEglise(\''+m.id+'\')">✏️</button>';
+      html+='<button class="btn btn-sm btn-outline" onclick="supprimerMembreEglise(\''+m.id+'\')">✕</button>';
+      html+='</div></div>';
+    });
+  } else {
+    html+='<div class="card" style="grid-column:1/-1"><div class="empty">Aucun membre. Cliquez "+ Ajouter" pour commencer.</div></div>';
+  }
+  html+='</div></div>';
+
+  // ── SUJETS DE PRIÈRE ───────────────────────────────────────────────────
+  html+='<div id="eg-sujets" style="display:none">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html+='<h3 style="font-size:15px">Sujets de prière collectifs</h3>';
+  html+='<button class="btn btn-gold btn-sm" onclick="openModal(\'modal-eg-sujet\')">+ Sujet</button></div>';
+  var cats=['Santé','Famille','Finance','Ministère','Nation','Autres'];
+  var hasSujets=false;
+  cats.forEach(function(cat){
+    var sujets=a.sujetsPriere.filter(function(s){return s.categorie===cat;});
+    if(!sujets.length) return;
+    hasSujets=true;
+    html+='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">'+cat+'</div>';
+    sujets.forEach(function(s){
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--navy3);border-radius:8px;margin-bottom:6px">';
+      html+='<input type="checkbox" '+(s.repondu?'checked':'')+' onchange="toggleSujet(\''+s.id+'\')" style="width:15px;height:15px;accent-color:var(--purple);flex-shrink:0"/>';
+      html+='<div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text);'+(s.repondu?'text-decoration:line-through;color:var(--text3)':'')+'">'+s.sujet+'</div>';
+      if(s.notes) html+='<div style="font-size:11px;color:var(--text3)">'+s.notes+'</div>';
+      html+='</div>';
+      if(s.repondu) html+='<span class="badge badge-green" style="font-size:10px">✅ Répondu</span>';
+      html+='<button class="btn btn-sm btn-outline" onclick="supprimerSujet(\''+s.id+'\')">✕</button>';
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  if(!hasSujets) html+='<div class="empty">Aucun sujet de prière enregistré.</div>';
+  html+='</div>';
+
+  // ── HISTORIQUE ─────────────────────────────────────────────────────────
+  html+='<div id="eg-historique" style="display:none">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html+='<h3 style="font-size:15px">Historique des rencontres</h3>';
+  html+='<button class="btn btn-gold btn-sm" onclick="openModal(\'modal-eg-histo\')">+ Rencontre</button></div>';
+  if(!a.historique.length){
+    html+='<div class="empty">Aucune rencontre enregistrée. Notez vos rencontres après chaque '+JOURS_NOMS[getJourRencontre()].toLowerCase()+'.</div>';
+  } else {
+    a.historique.slice().sort(function(x,y){return new Date(y.date)-new Date(x.date);}).forEach(function(h){
+      html+='<div class="card pilier-card pilier-spirituel" style="margin-bottom:10px">';
+      html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">';
+      html+='<div><div style="font-size:14px;font-weight:600">'+fmtDate(h.date)+' — 🎤 '+h.directeur+'</div>';
+      html+='<div style="font-size:12px;color:var(--text3)">👥 '+( h.presents||'?')+' présents</div></div>';
+      html+='<div style="display:flex;gap:6px">'+(h.theme?'<span class="badge badge-purple">'+h.theme+'</span>':'');
+      html+='<button class="btn btn-sm btn-outline" onclick="supprimerHistorique(\''+h.id+'\')">✕</button></div></div>';
+      if(h.notes) html+='<div style="font-size:13px;color:var(--text2);margin-bottom:4px">📝 '+h.notes+'</div>';
+      if(h.reponsesPriere) html+='<div style="font-size:12px;color:var(--green)">✅ '+h.reponsesPriere+'</div>';
+      html+='</div>';
+    });
+  }
+  html+='</div>';
+
+  // ── MODALS ─────────────────────────────────────────────────────────────
+  html += modalEglise();
+  return html;
+}
+
+function modalEglise() {
+  var a = getAutres();
+  var memOpts = a.membres.map(function(m){return'<option>'+m.prenom+'</option>';}).join('');
+  return (
+    '<div class="modal-bg" id="modal-eg-info"><div class="modal"><h3>⛪ Informations du groupe</h3>'
+    +'<div class="form-row"><div class="form-group"><label>Nom de l\'église</label><input id="eg-nom-eglise" value="'+(a.eglise.nom||'')+'" placeholder="Nom de l\'église"/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Nom du groupe</label><input id="eg-nom-groupe" value="'+(a.eglise.groupe||'')+'" placeholder="Groupe de prière"/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>📅 Jour de rencontre</label><select id="eg-jour-semaine"><option value="1"'+(( a.eglise.jourSemaine||4)===1?' selected':'')+'>Lundi</option><option value="2"'+((a.eglise.jourSemaine||4)===2?' selected':'')+'>Mardi</option><option value="3"'+((a.eglise.jourSemaine||4)===3?' selected':'')+'>Mercredi</option><option value="4"'+((a.eglise.jourSemaine||4)===4?' selected':'')+'>Jeudi</option><option value="5"'+((a.eglise.jourSemaine||4)===5?' selected':'')+'>Vendredi</option><option value="6"'+((a.eglise.jourSemaine||4)===6?' selected':'')+'>Samedi</option><option value="0"'+((a.eglise.jourSemaine||4)===0?' selected':'')+'>Dimanche</option></select></div></div>'
+    +'<div style="font-size:11px;color:var(--text3);margin:-6px 0 10px;padding:0 4px">⚠️ Changer le jour supprimera les rotations existantes et relancera la génération automatiquement.</div>'
+    +'<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-eg-info\')">Annuler</button><button class="btn btn-gold" onclick="sauvegarderInfoEglise()">Enregistrer</button></div>'
+    +'</div></div>'
+    +'<div class="modal-bg" id="modal-eg-bloc"><div class="modal"><h3>📋 Nouveau bloc du programme</h3>'
+    +'<div class="form-row"><div class="form-group"><label>Titre du bloc</label><input id="eb-titre" placeholder="Ex: Louange & Adoration"/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Durée (minutes)</label><input type="number" id="eb-duree" value="10" min="1" max="120"/></div>'
+    +'<div class="form-group"><label>Responsable</label><input id="eb-resp" placeholder="Directeur, Groupe..."/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Notes</label><textarea id="eb-notes" placeholder="Instructions, cantiques, passage..."></textarea></div></div>'
+    +'<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-eg-bloc\')">Annuler</button><button class="btn btn-gold" onclick="ajouterBloc()">Ajouter</button></div>'
+    +'</div></div>'
+    +'<div class="modal-bg" id="modal-eg-bloc-edit"><div class="modal"><h3>✏️ Modifier le bloc</h3>'
+    +'<input type="hidden" id="eb-edit-id"/>'
+    +'<div class="form-row"><div class="form-group"><label>Titre</label><input id="eb-edit-titre"/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Durée (min)</label><input type="number" id="eb-edit-duree" min="1"/></div>'
+    +'<div class="form-group"><label>Responsable</label><input id="eb-edit-resp"/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Notes</label><textarea id="eb-edit-notes"></textarea></div></div>'
+    +'<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-eg-bloc-edit\')">Annuler</button><button class="btn btn-gold" onclick="sauvegarderEditBloc()">Sauvegarder</button></div>'
+    +'</div></div>'
+    +'<div class="modal-bg" id="modal-eg-membre"><div class="modal"><h3>👤 Nouveau membre du groupe</h3>'
+    +'<div class="form-row"><div class="form-group"><label>Prénom *</label><input id="egm-prenom" placeholder="Prénom"/></div>'
+    +'<div class="form-group"><label>Nom</label><input id="egm-nom" placeholder="Nom"/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Rôle</label><select id="egm-role"><option>Membre</option><option>Coordinateur</option><option>Musicien</option><option>Intercesseur</option><option>Lecteur</option></select></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Email</label><input type="email" id="egm-email" placeholder="email@exemple.com"/></div>'
+    +'<div class="form-group"><label>Téléphone</label><input id="egm-tel" placeholder="+1 613 555 0123"/></div></div>'
+    +'<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-eg-membre\')">Annuler</button><button class="btn btn-gold" onclick="ajouterMembreEglise()">Ajouter</button></div>'
+    +'</div></div>'
+    +'<div class="modal-bg" id="modal-eg-membre-edit"><div class="modal"><h3>✏️ Modifier le membre</h3>'
+    +'<input type="hidden" id="egme-id"/>'
+    +'<div class="form-row"><div class="form-group"><label>Prénom *</label><input id="egme-prenom" placeholder="Prénom"/></div>'
+    +'<div class="form-group"><label>Nom</label><input id="egme-nom" placeholder="Nom"/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Rôle</label><select id="egme-role"><option>Membre</option><option>Coordinateur</option><option>Musicien</option><option>Intercesseur</option><option>Lecteur</option></select></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Email</label><input type="email" id="egme-email" placeholder="email@exemple.com"/></div>'
+    +'<div class="form-group"><label>Téléphone</label><input id="egme-tel" placeholder="+1 613 555 0123"/></div></div>'
+    +'<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-eg-membre-edit\')">Annuler</button><button class="btn btn-gold" onclick="sauvegarderEditMembreEglise()">Sauvegarder</button></div>'
+    +'</div></div>'
+    +'<div class="modal-bg" id="modal-eg-sujet"><div class="modal"><h3>🙏 Nouveau sujet de prière</h3>'
+    +'<div class="form-row"><div class="form-group"><label>Sujet *</label><input id="es-sujet" placeholder="Décrivez le sujet..."/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Catégorie</label><select id="es-cat"><option>Santé</option><option>Famille</option><option>Finance</option><option>Ministère</option><option>Nation</option><option>Autres</option></select></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Notes / Contexte</label><textarea id="es-notes" placeholder="Contexte supplémentaire..."></textarea></div></div>'
+    +'<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-eg-sujet\')">Annuler</button><button class="btn btn-gold" onclick="ajouterSujet()">Ajouter</button></div>'
+    +'</div></div>'
+    +'<div class="modal-bg" id="modal-eg-rotation-manuel"><div class="modal"><h3>📅 Ajouter une date manuelle</h3>'
+    +'<div class="form-row"><div class="form-group"><label>Date (jeudi)</label><input type="date" id="er-date"/></div>'
+    +'<div class="form-group"><label>Directeur</label><select id="er-directeur">'+memOpts+'</select></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Thème</label><input id="er-theme" placeholder="Thème de la rencontre"/></div></div>'
+    +'<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-eg-rotation-manuel\')">Annuler</button><button class="btn btn-gold" onclick="ajouterRotationManuel()">Ajouter</button></div>'
+    +'</div></div>'
+    +'<div class="modal-bg" id="modal-eg-histo"><div class="modal"><h3>📜 Enregistrer une rencontre</h3>'
+    +'<div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="eh-date"/></div>'
+    +'<div class="form-group"><label>Directeur</label><select id="eh-directeur">'+memOpts+'</select></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Thème</label><input id="eh-theme" placeholder="Thème de la rencontre"/></div>'
+    +'<div class="form-group"><label>Nombre de présents</label><input type="number" id="eh-presents" value="8" min="1"/></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Notes / Résumé</label><textarea id="eh-notes" placeholder="Points saillants, sujets priés..."></textarea></div></div>'
+    +'<div class="form-row"><div class="form-group"><label>Réponses de prière</label><textarea id="eh-reponses" placeholder="Témoignages, réponses notées..."></textarea></div></div>'
+    +'<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-eg-histo\')">Annuler</button><button class="btn btn-gold" onclick="ajouterHistorique()">Enregistrer</button></div>'
+    +'</div></div>'
+  );
+}
+
+// ── CALENDRIER 2 MOIS (dans Programme) ────────────────────────────────────
+function renderCalendrierRotation2Mois(a) {
+  if (!a.rotations || !a.rotations.length) return '';
+  var moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = today.toISOString().slice(0,10);
+  var moisCourant = today.getMonth();
+  var anneeCourante = today.getFullYear();
+  var moisSuivant = moisCourant === 11 ? 0 : moisCourant + 1;
+  var anneeSuivante = moisCourant === 11 ? anneeCourante + 1 : anneeCourante;
+  var moisAfficher = [
+    {mo: moisCourant,  yr: anneeCourante},
+    {mo: moisSuivant,  yr: anneeSuivante}
+  ];
+  var html = '<div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text)">📆 Rotations — mois en cours & suivant</div>';
+  html += '<button class="btn btn-outline btn-sm" onclick="switchTab({target:document.querySelector(\'[onclick*=\\\"eg-rotation\\\"]\')},\'eg-rotation\')" style="font-size:11px">Voir toutes →</button>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">';
+  moisAfficher.forEach(function(item) {
+    var mo = item.mo; var yr = item.yr;
+    var nbJours = new Date(yr, mo+1, 0).getDate();
+    var offset = (new Date(yr, mo, 1).getDay()+6)%7;
+    var rotsMois = a.rotations.filter(function(r) {
+      var d = new Date(r.date+'T12:00:00');
+      return d.getMonth()===mo && d.getFullYear()===yr;
+    });
+    html += '<div style="background:var(--navy3);border-radius:12px;overflow:hidden">';
+    html += '<div style="background:var(--navy4);padding:8px 14px;font-size:13px;font-weight:700;color:var(--text)">'+moisNoms[mo]+' '+yr+'</div>';
+    html += '<div style="padding:10px">';
+    // Jours de semaine
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">';
+    ['L','M','M','J','V','S','D'].forEach(function(j,i){
+      html += '<div style="text-align:center;font-size:10px;font-weight:600;color:'+(i===(getJourRencontre()+6)%7?'var(--gold)':'var(--text3)')+';padding:2px">'+j+'</div>';
+    });
+    html += '</div>';
+    // Grille jours
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+    for (var i=0;i<offset;i++) html += '<div></div>';
+    for (var d=1;d<=nbJours;d++) {
+      var dateStr = yr+'-'+(mo+1<10?'0':'')+(mo+1)+'-'+(d<10?'0':'')+d;
+      var jourSem = new Date(dateStr+'T12:00:00').getDay();
+      var isJeudi = jourSem===getJourRencontre();
+      var isToday2 = dateStr===todayStr;
+      var isPast = dateStr<todayStr;
+      var rot = isJeudi ? rotsMois.find(function(r){return r.date===dateStr;}) : null;
+      if (isJeudi && rot) {
+        var col = avatarColorStr(rot.directeur);
+        var bg = isToday2?'rgba(212,168,67,.22)':(isPast?col+'18':col+'28');
+        var border = isToday2?'2px solid var(--gold)':'1px solid '+col+'55';
+        html += '<div style="background:'+bg+';border:'+border+';border-radius:6px;padding:3px 2px;text-align:center;'+(isPast?'opacity:.55':'')+'" title="'+rot.directeur+(rot.theme?' — '+rot.theme:'')+'">';
+        html += '<div style="font-size:11px;font-weight:600;color:'+(isToday2?'var(--gold)':'var(--text2)')+';line-height:1.2">'+d+'</div>';
+        html += '<div style="width:22px;height:22px;border-radius:50%;background:'+col+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;margin:2px auto">'+rot.directeur.slice(0,1).toUpperCase()+'</div>';
+        html += '<div style="font-size:9px;color:'+col+';font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+rot.directeur.split(' ')[0].slice(0,8)+'</div>';
+        if (isToday2) html += '<div style="font-size:8px;color:var(--gold);font-weight:700">CE SOIR</div>';
+        html += '</div>';
+      } else if (isJeudi) {
+        html += '<div style="background:var(--navy4);border:1px dashed var(--border);border-radius:6px;padding:3px 2px;text-align:center;opacity:.4"><div style="font-size:11px;color:var(--gold)">'+d+'</div></div>';
+      } else {
+        html += '<div style="padding:3px 2px;text-align:center"><div style="font-size:11px;color:'+(isToday2?'var(--gold)':'var(--text3)')+';font-weight:'+(isToday2?'700':'400')+'">'+d+'</div></div>';
+      }
+    }
+    html += '</div>';
+    // Mini liste jeudis
+    if (rotsMois.length) {
+      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
+      rotsMois.forEach(function(r) {
+        var d2 = new Date(r.date+'T12:00:00');
+        var c2 = avatarColorStr(r.directeur);
+        var past2 = r.date<todayStr; var tod2 = r.date===todayStr;
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;'+(past2&&!tod2?'opacity:.5':'')+'">';
+        html += '<div style="width:6px;height:6px;border-radius:50%;background:'+c2+';flex-shrink:0"></div>';
+        html += '<span style="font-size:11px;color:var(--text3);min-width:30px">'+d2.getDate()+' '+['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'][d2.getMonth()]+'</span>';
+        html += '<span style="font-size:12px;font-weight:600;color:'+(tod2?'var(--gold)':c2)+';flex:1">'+r.directeur+'</span>';
+        html += '<input value="'+(r.theme||'')+'" onchange="updateRotationTheme(\''+r.id+'\',this.value)" style="font-size:10px;padding:2px 5px;border-radius:4px;border:1px solid var(--border);background:var(--navy4);color:var(--text2);width:80px" placeholder="Thème..."/>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+
+// ── CALENDRIER ROTATION ─────────────────────────────────────────────────────
+function renderCalendrierRotation(a) {
+  var html = '';
+  var moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var joursNoms = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = today.toISOString().slice(0,10);
+
+  // Header
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  html += '<h3 style="font-size:15px">Programme tournant — '+JOURS_NOMS[getJourRencontre()]+'s</h3>';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<button class="btn btn-gold btn-sm" onclick="genererRotation()">🔄 Générer (16 sem.)</button>';
+  html += '<button class="btn btn-outline btn-sm" onclick="openModal(\'modal-eg-rotation-manuel\')">+ Manuel</button>';
+  html += '</div></div>';
+
+  if (!a.membres.length) {
+    return html + '<div class="empty">Ajoutez d\'abord vos membres dans l\'onglet Membres puis cliquez Générer.</div>';
+  }
+  if (!a.rotations.length) {
+    return html + '<div style="text-align:center;padding:32px;background:var(--navy3);border-radius:12px"><div style="font-size:32px;margin-bottom:10px">🔄</div><div style="font-size:14px;color:var(--text2);margin-bottom:16px">Chaque membre dirige à tour de rôle chaque '+JOURS_NOMS[getJourRencontre()].toLowerCase()+'.</div><button class="btn btn-gold" onclick="genererRotation()">🔄 Générer le programme tournant</button></div>';
+  }
+
+  // Prochaine rencontre banner
+  var prochain = a.rotations.find(function(r){ return r.date >= todayStr; });
+  if (prochain) {
+    var col0 = avatarColorStr(prochain.directeur);
+    html += '<div style="margin-bottom:16px;background:rgba(154,106,218,.1);border:1px solid rgba(154,106,218,.3);border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">';
+    html += '<span style="font-size:11px;font-weight:600;color:var(--purple);text-transform:uppercase;letter-spacing:.5px">Prochaine rencontre</span>';
+    html += '<span style="font-size:16px;font-weight:700;color:var(--gold)">'+fmtDate(prochain.date)+'</span>';
+    html += '<div style="display:flex;align-items:center;gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:'+col0+'22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+col0+'">'+prochain.directeur.slice(0,1).toUpperCase()+'</div>';
+    html += '<span style="font-size:14px;font-weight:600;color:var(--text)">'+prochain.directeur+'</span></div>';
+    if (prochain.theme) html += '<span style="font-size:12px;color:var(--text3)">📖 '+prochain.theme+'</span>';
+    html += '</div>';
+  }
+
+  // Regrouper rotations par année/mois
+  var parAnnee = {};
+  a.rotations.forEach(function(r) {
+    var d = new Date(r.date+'T12:00:00');
+    var yr = d.getFullYear(); var mo = d.getMonth();
+    if (!parAnnee[yr]) parAnnee[yr] = {};
+    if (!parAnnee[yr][mo]) parAnnee[yr][mo] = [];
+    parAnnee[yr][mo].push(r);
+  });
+
+  Object.keys(parAnnee).sort().forEach(function(yr) {
+    html += '<div style="margin-bottom:24px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);padding:8px 0;margin-bottom:12px;border-bottom:1px solid var(--border)">'+yr+'</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">';
+
+    Object.keys(parAnnee[yr]).sort(function(a,b){return Number(a)-Number(b);}).forEach(function(mo) {
+      var rotsMois = parAnnee[yr][mo];
+      var nbJours = new Date(Number(yr), Number(mo)+1, 0).getDate();
+      var premier = new Date(Number(yr), Number(mo), 1);
+      var offset = (premier.getDay()+6)%7; // lundi=0
+
+      html += '<div style="background:var(--navy3);border-radius:12px;overflow:hidden">';
+      // En-tête mois
+      html += '<div style="background:var(--navy4);padding:8px 14px;font-size:12px;font-weight:700;color:var(--text);letter-spacing:.3px">'+moisNoms[Number(mo)]+'</div>';
+
+      // Grille jours de la semaine
+      html += '<div style="padding:10px">';
+      html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">';
+      ['L','M','M','J','V','S','D'].forEach(function(j,i){
+        html += '<div style="text-align:center;font-size:10px;font-weight:600;color:'+(i===(getJourRencontre()+6)%7?'var(--gold)':'var(--text3)')+';padding:2px">'+j+'</div>';
+      });
+      html += '</div>';
+
+      // Cellules
+      html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+      // Cases vides avant
+      for (var i=0;i<offset;i++) html += '<div></div>';
+
+      for (var d=1;d<=nbJours;d++) {
+        var dateStr = yr+'-'+(Number(mo)+1<10?'0':'')+(Number(mo)+1)+'-'+(d<10?'0':'')+d;
+        var jourSemaine = new Date(dateStr+'T12:00:00').getDay(); // 4 = jeudi
+        var isJeudi = jourSemaine === getJourRencontre();
+        var isToday2 = dateStr === todayStr;
+        var isPast = dateStr < todayStr;
+        var rot = isJeudi ? rotsMois.find(function(r){return r.date===dateStr;}) : null;
+
+        if (isJeudi && rot) {
+          var col = avatarColorStr(rot.directeur);
+          var bg = isToday2 ? 'rgba(212,168,67,.22)' : isPast ? col+'18' : col+'28';
+          var border = isToday2 ? '2px solid var(--gold)' : '1px solid '+col+'55';
+          var initiale = rot.directeur.slice(0,1).toUpperCase();
+          var prenomCourt = rot.directeur.split(' ')[0].slice(0,8);
+          html += '<div style="background:'+bg+';border:'+border+';border-radius:6px;padding:3px 2px;text-align:center;cursor:default;'+(isPast?'opacity:.55':'')+'" title="'+rot.directeur+(rot.theme?' — '+rot.theme:'')+'">';
+          html += '<div style="font-size:11px;font-weight:600;color:'+(isToday2?'var(--gold)':'var(--text2)')+';line-height:1.2">'+d+'</div>';
+          html += '<div style="width:22px;height:22px;border-radius:50%;background:'+col+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;margin:2px auto">'+initiale+'</div>';
+          html += '<div style="font-size:9px;color:'+col+';font-weight:600;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+prenomCourt+'</div>';
+          if (isToday2) html += '<div style="font-size:8px;color:var(--gold);font-weight:700">CE SOIR</div>';
+          html += '</div>';
+        } else if (isJeudi) {
+          // Jeudi sans rotation
+          html += '<div style="background:var(--navy4);border:1px dashed var(--border);border-radius:6px;padding:3px 2px;text-align:center;opacity:.5">';
+          html += '<div style="font-size:11px;color:var(--gold);font-weight:600">'+d+'</div>';
+          html += '<div style="font-size:9px;color:var(--text3)">—</div>';
+          html += '</div>';
+        } else {
+          // Jour normal (non jeudi)
+          html += '<div style="padding:3px 2px;text-align:center">';
+          html += '<div style="font-size:11px;color:'+(isToday2?'var(--gold)':'var(--text3)')+';font-weight:'+(isToday2?'700':'400')+'">'+d+'</div>';
+          html += '</div>';
+        }
+      }
+      html += '</div>'; // grid jours
+
+      // Légende du mois (noms complets des jeudis)
+      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
+      rotsMois.forEach(function(r) {
+        var d2 = new Date(r.date+'T12:00:00');
+        var col2 = avatarColorStr(r.directeur);
+        var past2 = r.date < todayStr;
+        var today2 = r.date === todayStr;
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;'+(past2&&!today2?'opacity:.5':'')+'">';
+        html += '<div style="width:6px;height:6px;border-radius:50%;background:'+col2+';flex-shrink:0"></div>';
+        html += '<span style="font-size:11px;color:var(--text3);min-width:32px">'+d2.getDate()+' '+['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'][d2.getMonth()]+'</span>';
+        html += '<span style="font-size:12px;font-weight:600;color:'+(today2?'var(--gold)':col2)+';flex:1">'+r.directeur+'</span>';
+        if (r.theme) html += '<span style="font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px">'+r.theme+'</span>';
+        if (today2) html += '<span style="font-size:9px;background:rgba(212,168,67,.2);color:var(--gold);padding:1px 5px;border-radius:8px;font-weight:700">CE SOIR</span>';
+        // Champ thème inline
+        html += '<input value="'+(r.theme||'')+'" onchange="updateRotationTheme(\''+r.id+'\',this.value)" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--navy4);color:var(--text2);width:70px" placeholder="Thème..."/>';
+        html += '</div>';
+      });
+      html += '</div>'; // légende
+
+      html += '</div></div>'; // padding + card mois
+    });
+    html += '</div></div>'; // grid + année
+  });
+
+  return html;
+}
+
+// ── RÉCAP ANNUEL ──────────────────────────────────────────────────────────
+function renderRecapAnnuel() {
+  var a = getAutres();
+  if (!a.rotations || !a.rotations.length) return '';
+
+  var moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = today.toISOString().slice(0,10);
+
+  // Grouper les rotations par année puis par mois
+  var parAnnee = {};
+  a.rotations.forEach(function(r) {
+    var d = new Date(r.date+'T12:00:00');
+    var yr = d.getFullYear();
+    var mo = d.getMonth();
+    if (!parAnnee[yr]) parAnnee[yr] = {};
+    if (!parAnnee[yr][mo]) parAnnee[yr][mo] = [];
+    parAnnee[yr][mo].push(r);
+  });
+
+  var html = '';
+  html += '<div style="margin-top:24px">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
+  html += '<div style="font-size:14px;font-weight:600;color:var(--text)">📆 Récapitulatif annuel des rotations</div>';
+  html += '<div style="display:flex;gap:10px;font-size:11px;color:var(--text3)">';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--navy3);display:inline-block;border:1px solid var(--border)"></span>Passé</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(212,168,67,.25);display:inline-block"></span>Aujourd\'hui</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(154,106,218,.15);display:inline-block"></span>À venir</span>';
+  html += '</div></div>';
+
+  Object.keys(parAnnee).sort().forEach(function(yr) {
+    html += '<div style="margin-bottom:20px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">📅 '+yr+'</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">';
+
+    Object.keys(parAnnee[yr]).sort(function(a,b){return a-b;}).forEach(function(mo) {
+      var rotsMois = parAnnee[yr][mo];
+      html += '<div style="background:var(--navy3);border-radius:10px;padding:12px 14px">';
+      html += '<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">'+moisNoms[mo]+'</div>';
+
+      rotsMois.forEach(function(r) {
+        var isPast  = r.date < todayStr;
+        var isToday = r.date === todayStr;
+        var col     = avatarColorStr(r.directeur);
+        var bg      = isToday
+          ? 'rgba(212,168,67,.18)'
+          : isPast
+            ? 'transparent'
+            : 'rgba(154,106,218,.1)';
+        var borderColor = isToday
+          ? 'rgba(212,168,67,.5)'
+          : isPast
+            ? 'var(--border)'
+            : 'rgba(154,106,218,.3)';
+        var d = new Date(r.date+'T12:00:00');
+        var joursNoms = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+        var dateLabel = joursNoms[d.getDay()]+' '+d.getDate();
+
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;margin-bottom:5px;background:'+bg+';border:1px solid '+borderColor+'">';
+        // Date
+        html += '<div style="font-size:12px;font-weight:600;color:'+(isToday?'var(--gold)':isPast?'var(--text3)':'var(--text2)')+';min-width:46px">'+dateLabel+'</div>';
+        // Séparateur
+        html += '<div style="width:1px;height:24px;background:var(--border)"></div>';
+        // Avatar + nom
+        html += '<div style="width:24px;height:24px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:'+col+';flex-shrink:0">'+r.directeur.slice(0,1).toUpperCase()+'</div>';
+        html += '<div style="flex:1;min-width:0">';
+        html += '<div style="font-size:13px;font-weight:500;color:'+(isPast&&!isToday?'var(--text3)':'var(--text)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.directeur+'</div>';
+        if (r.theme) html += '<div style="font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.theme+'</div>';
+        html += '</div>';
+        // Badge statut
+        if (isToday) {
+          html += '<span style="font-size:10px;background:rgba(212,168,67,.2);color:var(--gold);padding:2px 7px;border-radius:10px;font-weight:600;flex-shrink:0">Ce soir</span>';
+        } else if (isPast) {
+          html += '<span style="font-size:10px;color:var(--text3);flex-shrink:0">✓</span>';
+        } else {
+          var diffMs = new Date(r.date+'T12:00:00') - today;
+          var diffJ  = Math.round(diffMs/86400000);
+          html += '<span style="font-size:10px;color:var(--text3);flex-shrink:0">J-'+diffJ+'</span>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+// ── UTILITAIRES ÉGLISE ─────────────────────────────────────────────────────
+function avatarColorStr(nom){var c=['#4A88D4','#3DAA7A','#D4A843','#9A6ADA','#D85A30','#E05555','#2A68B4','#D4943A'];return c[nom?nom.charCodeAt(0)%c.length:0];}
+function prochainJeudi(){var jour=getJourRencontre();var d=new Date();var diff=(jour-d.getDay()+7)%7||7;d.setDate(d.getDate()+diff);return d.toLocaleDateString('fr-CA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
+function rotationActuelle(){var a=getAutres();if(!a.membres.length||!a.rotations.length)return null;var todayStr=new Date().toISOString().slice(0,10);var r=a.rotations.find(function(r){return r.date===todayStr;});if(!r)return null;var m=a.membres.findIndex(function(m){return m.prenom===r.directeur;});return m>=0?m:null;}
+// ── ACTIONS ÉGLISE ─────────────────────────────────────────────────────────
+function sauvegarderInfoEglise(){
+  var a=getAutres();
+  a.eglise.nom=document.getElementById('eg-nom-eglise').value.trim()||a.eglise.nom;
+  a.eglise.groupe=document.getElementById('eg-nom-groupe').value.trim()||a.eglise.groupe;
+  var nouveauJour=Number(document.getElementById('eg-jour-semaine').value);
+  var ancienJour=a.eglise.jourSemaine||4;
+  a.eglise.jourSemaine=nouveauJour;
+  saveData();closeModal('modal-eg-info');
+  if(nouveauJour!==ancienJour && a.membres.length && a.rotations.length){
+    a.rotations=[];saveData();genererRotation();
+    toast('Jour changé → rotations régénérées ✓');
+  } else {
+    render();toast('Infos mises à jour ✓');
+  }
+}
+function ajouterBloc(){var t=document.getElementById('eb-titre').value.trim();if(!t)return toast('Saisissez un titre','var(--red2)');var a=getAutres();var max=a.programme.reduce(function(m,p){return Math.max(m,p.ordre);},0);a.programme.push({id:uid(),ordre:max+1,titre:t,duree:Number(document.getElementById('eb-duree').value)||10,responsable:document.getElementById('eb-resp').value||'Groupe',notes:document.getElementById('eb-notes').value});saveData();closeModal('modal-eg-bloc');render();toast('Bloc ajouté ✓');}
+function editBloc(id){var a=getAutres();var b=a.programme.find(function(p){return p.id===id;});if(!b)return;document.getElementById('eb-edit-id').value=id;document.getElementById('eb-edit-titre').value=b.titre;document.getElementById('eb-edit-duree').value=b.duree;document.getElementById('eb-edit-resp').value=b.responsable;document.getElementById('eb-edit-notes').value=b.notes||'';openModal('modal-eg-bloc-edit');}
+function sauvegarderEditBloc(){var id=document.getElementById('eb-edit-id').value;var a=getAutres();var b=a.programme.find(function(p){return p.id===id;});if(!b)return;b.titre=document.getElementById('eb-edit-titre').value.trim()||b.titre;b.duree=Number(document.getElementById('eb-edit-duree').value)||b.duree;b.responsable=document.getElementById('eb-edit-resp').value||b.responsable;b.notes=document.getElementById('eb-edit-notes').value;saveData();closeModal('modal-eg-bloc-edit');render();toast('Mis à jour ✓');}
+function supprimerBloc(id){if(!confirm('Supprimer ce bloc?'))return;var a=getAutres();a.programme=a.programme.filter(function(p){return p.id!==id;});saveData();render();toast('Supprimé','var(--red2)');}
+function deplacerBloc(id,dir){var a=getAutres();var prog=a.programme.slice().sort(function(x,y){return x.ordre-y.ordre;});var idx=prog.findIndex(function(p){return p.id===id;});var swap=idx+dir;if(swap<0||swap>=prog.length)return;var tmp=prog[idx].ordre;prog[idx].ordre=prog[swap].ordre;prog[swap].ordre=tmp;a.programme=prog;saveData();render();}
+function ajouterMembreEglise(){var p=document.getElementById('egm-prenom').value.trim();if(!p)return toast('Saisissez un prénom','var(--red2)');var a=getAutres();a.membres.push({id:uid(),prenom:p,nom:document.getElementById('egm-nom').value,role:document.getElementById('egm-role').value,email:document.getElementById('egm-email').value,telephone:document.getElementById('egm-tel').value});saveData();closeModal('modal-eg-membre');render();toast('Membre ajouté ✓');}
+function supprimerMembreEglise(id){if(!confirm('Retirer ce membre?'))return;var a=getAutres();a.membres=a.membres.filter(function(m){return m.id!==id;});saveData();render();toast('Membre retiré','var(--red2)');}
+function editMembreEglise(id){var a=getAutres();var m=a.membres.find(function(m){return m.id===id;});if(!m)return;document.getElementById('egme-id').value=id;document.getElementById('egme-prenom').value=m.prenom||'';document.getElementById('egme-nom').value=m.nom||'';var sel=document.getElementById('egme-role');for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===m.role)sel.selectedIndex=i;}document.getElementById('egme-email').value=m.email||'';document.getElementById('egme-tel').value=m.telephone||'';openModal('modal-eg-membre-edit');}
+function sauvegarderEditMembreEglise(){var id=document.getElementById('egme-id').value;var a=getAutres();var m=a.membres.find(function(m){return m.id===id;});if(!m)return;var p=document.getElementById('egme-prenom').value.trim();if(!p)return toast('Saisissez un prénom','var(--red2)');var ancienPrenom=m.prenom;m.prenom=p;m.nom=document.getElementById('egme-nom').value;m.role=document.getElementById('egme-role').value;m.email=document.getElementById('egme-email').value;m.telephone=document.getElementById('egme-tel').value;if(ancienPrenom!==p){a.rotations.forEach(function(r){if(r.directeur===ancienPrenom)r.directeur=p;});a.historique.forEach(function(h){if(h.directeur===ancienPrenom)h.directeur=p;});}saveData();closeModal('modal-eg-membre-edit');render();toast('Membre mis à jour ✓');}
+function monterMembreEglise(idx){var a=getAutres();if(idx<=0)return;var tmp=a.membres[idx];a.membres[idx]=a.membres[idx-1];a.membres[idx-1]=tmp;saveData();render();}
+function descendreMembreEglise(idx){var a=getAutres();if(idx>=a.membres.length-1)return;var tmp=a.membres[idx];a.membres[idx]=a.membres[idx+1];a.membres[idx+1]=tmp;saveData();render();}
+function editOrdreEglise(idx, total, id) {
+  var nouveau = prompt('Nouveau numéro d\'ordre pour ce membre (1 à '+total+') :', idx+1);
+  if (nouveau === null) return;
+  var n = parseInt(nouveau, 10);
+  if (isNaN(n) || n < 1 || n > total) return toast('Numéro invalide — entrez un nombre entre 1 et '+total,'var(--red2)');
+  var a = getAutres();
+  var cible = n - 1; // index 0-based
+  if (cible === idx) return; // pas de changement
+  // Déplacer le membre de idx vers cible
+  var membre = a.membres.splice(idx, 1)[0];
+  a.membres.splice(cible, 0, membre);
+  saveData(); render(); toast('Ordre mis à jour — '+membre.prenom+' est maintenant #'+n+' ✓');
+}
+function genererRotation(){
+  var a=getAutres();
+  if(!a.membres.length) return toast('Ajoutez des membres d\'abord','var(--red2)');
+  var jour=getJourRencontre();
+  var d=new Date();
+  var diff=(jour-d.getDay()+7)%7||7;
+  d.setDate(d.getDate()+diff);
+  var finAnnee = new Date(d.getFullYear(), 11, 31);
+  a.rotations=[];
+  var i=0;
+  while(d<=finAnnee){
+    var dateStr=d.getFullYear()+'-'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate();
+    var m=a.membres[i%a.membres.length];
+    a.rotations.push({id:uid(),date:dateStr,directeur:m.prenom,theme:''});
+    d.setDate(d.getDate()+7);
+    i++;
+  }
+  saveData();render();toast('Programme généré jusqu\'au 31 décembre — '+a.rotations.length+' rencontres ✓');
+}
+function updateRotationTheme(id,val){var a=getAutres();var r=a.rotations.find(function(r){return r.id===id;});if(r){r.theme=val;saveData();}}
+function updateRotationDirecteur(id,val){var a=getAutres();var r=a.rotations.find(function(r){return r.id===id;});if(r){r.directeur=val;saveData();toast('Directeur mis à jour : '+val+' ✓');}}
+function supprimerRotation(id){var a=getAutres();a.rotations=a.rotations.filter(function(r){return r.id!==id;});saveData();render();toast('Supprimé','var(--red2)');}
+function ajouterRotationManuel(){var date=document.getElementById('er-date').value;var dir=document.getElementById('er-directeur').value;if(!date||!dir)return toast('Remplissez date et directeur','var(--red2)');var a=getAutres();a.rotations.push({id:uid(),date:date,directeur:dir,theme:document.getElementById('er-theme').value});a.rotations.sort(function(x,y){return new Date(x.date)-new Date(y.date);});saveData();closeModal('modal-eg-rotation-manuel');render();toast('Rotation ajoutée ✓');}
+function ajouterSujet(){var s=document.getElementById('es-sujet').value.trim();if(!s)return toast('Saisissez un sujet','var(--red2)');var a=getAutres();a.sujetsPriere.push({id:uid(),sujet:s,categorie:document.getElementById('es-cat').value,notes:document.getElementById('es-notes').value,repondu:false});saveData();closeModal('modal-eg-sujet');render();toast('Sujet ajouté ✓');}
+function toggleSujet(id){var a=getAutres();var s=a.sujetsPriere.find(function(s){return s.id===id;});if(s){s.repondu=!s.repondu;saveData();render();toast(s.repondu?'Réponse marquée ✓':'Remis en cours');}}
+function supprimerSujet(id){var a=getAutres();a.sujetsPriere=a.sujetsPriere.filter(function(s){return s.id!==id;});saveData();render();toast('Supprimé','var(--red2)');}
+function ajouterHistorique(){var d=document.getElementById('eh-date').value;if(!d)return toast('Saisissez une date','var(--red2)');var a=getAutres();a.historique.push({id:uid(),date:d,directeur:document.getElementById('eh-directeur').value,theme:document.getElementById('eh-theme').value,presents:document.getElementById('eh-presents').value,notes:document.getElementById('eh-notes').value,reponsesPriere:document.getElementById('eh-reponses').value});saveData();closeModal('modal-eg-histo');render();toast('Rencontre enregistrée ✓');}
+function supprimerHistorique(id){var a=getAutres();a.historique=a.historique.filter(function(h){return h.id!==id;});saveData();render();toast('Supprimé','var(--red2)');}
+function imprimerProgramme(){var a=getAutres();var prog=a.programme.slice().sort(function(x,y){return x.ordre-y.ordre;});var total=prog.reduce(function(s,p){return s+Number(p.duree||0);},0);var win=window.open('','_blank','width=750,height=950');if(!win)return toast('Autorisez les popups pour imprimer','var(--amber)');var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Programme de prière</title><style>body{font-family:Georgia,serif;max-width:620px;margin:40px auto;color:#1A1A2E}h1{color:#7A4AB8;border-bottom:2px solid #7A4AB8;padding-bottom:8px}h2{color:#666;font-size:14px;font-weight:normal;margin-top:-6px}.bloc{display:flex;gap:0;margin-bottom:8px;border-radius:8px;overflow:hidden;border:1px solid #ddd}.num{width:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;padding:8px 4px}.info{flex:1;padding:10px 14px;background:#fafafa}.titre{font-size:14px;font-weight:700;margin-bottom:3px}.meta{font-size:12px;color:#666}.total{text-align:right;font-size:13px;font-weight:bold;color:#7A4AB8;margin-top:12px;padding-top:8px;border-top:2px solid #7A4AB8}.footer{margin-top:28px;text-align:center;font-size:11px;color:#999}@media print{button{display:none!important}}</style></head><body>';
+  html+='<h1>⛪ '+a.eglise.nom+'</h1><h2>'+a.eglise.groupe+' — Rencontre du '+prochainJeudi()+'</h2>';
+  var colors=['#9A6ADA','#4A88D4','#3DAA7A','#D4A843','#E05555','#D4943A','#4A6A8A'];
+  var mc=0,hB=19;
+  prog.forEach(function(b,i){var h=hB+Math.floor(mc/60),m=mc%60;var hS=(h<10?'0':'')+h+':'+(m<10?'0':'')+m;mc+=Number(b.duree||0);html+='<div class="bloc"><div class="num" style="background:'+colors[i%colors.length]+'">'+b.ordre+'<span style="font-size:10px;opacity:.85">'+hS+'</span></div><div class="info"><div class="titre">'+b.titre+'</div><div class="meta">👤 '+b.responsable+' &nbsp;⏱ '+b.duree+' min'+(b.notes?' &nbsp;· '+b.notes:'')+'</div></div></div>';});
+  html+='<div class="total">Durée totale : '+Math.floor(total/60)+'h'+(total%60?total%60+'min':'')+'</div>';
+  html+='<div class="footer">Généré par FamilyOS · '+new Date().toLocaleDateString('fr-CA')+'</div>';
+  html+='<br><button onclick="window.print()" style="margin-top:16px;padding:10px 24px;background:#7A4AB8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px">🖨 Imprimer / Sauvegarder PDF</button>';
+  html+='</body></html>';
+  win.document.write(html);win.document.close();}
+
+function imprimerCalendrierRotation() {
+  var a = getAutres();
+  if (!a.rotations.length) return toast('Aucune rotation à imprimer — cliquez Générer d\'abord','var(--amber)');
+  var moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var win = window.open('','_blank','width=850,height=1100');
+  if (!win) return toast('Autorisez les popups pour imprimer','var(--amber)');
+  var today = new Date().toISOString().slice(0,10);
+  // Grouper par mois
+  var parMois = {};
+  a.rotations.forEach(function(r) {
+    var d = new Date(r.date+'T12:00:00');
+    var key = d.getFullYear()+'-'+d.getMonth();
+    if (!parMois[key]) parMois[key] = {yr:d.getFullYear(), mo:d.getMonth(), rots:[]};
+    parMois[key].rots.push(r);
+  });
+  var colors = ['#9A6ADA','#4A88D4','#3DAA7A','#D4A843','#E05555','#D4943A','#2A68B4','#D85A30'];
+  var memColors = {};
+  a.membres.forEach(function(m,i){ memColors[m.prenom] = colors[i%colors.length]; });
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Programme de rotation — '+a.eglise.nom+'</title>';
+  html += '<style>body{font-family:Arial,sans-serif;max-width:780px;margin:30px auto;color:#1A1A2E}';
+  html += 'h1{color:#7A4AB8;border-bottom:3px solid #7A4AB8;padding-bottom:8px;margin-bottom:4px}';
+  html += 'h2{color:#555;font-size:14px;font-weight:normal;margin:0 0 20px}';
+  html += '.months{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px}';
+  html += '.month{border:1px solid #ddd;border-radius:10px;overflow:hidden;break-inside:avoid}';
+  html += '.month-title{background:#7A4AB8;color:#fff;padding:8px 14px;font-size:14px;font-weight:700}';
+  html += '.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:8px}';
+  html += '.day-hdr{text-align:center;font-size:10px;font-weight:700;color:#888;padding:2px}';
+  html += '.day-hdr.thu{color:#7A4AB8}';
+  html += '.day{text-align:center;padding:3px 1px;font-size:11px;min-height:52px}';
+  html += '.day.thu-rot{border-radius:6px;border:1px solid #ddd}';
+  html += '.day-num{font-weight:600;font-size:11px}';
+  html += '.avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;margin:2px auto}';
+  html += '.name{font-size:8px;font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}';
+  html += '.legend{padding:8px 14px;border-top:1px solid #eee;display:flex;flex-wrap:wrap;gap:6px}';
+  html += '.legend-item{display:flex;align-items:center;gap:4px;font-size:10px}';
+  html += '.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}';
+  html += 'footer{margin-top:24px;text-align:center;font-size:10px;color:#aaa}';
+  html += '@media print{button{display:none!important}.months{grid-template-columns:1fr 1fr}}</style></head><body>';
+  html += '<h1>⛪ '+a.eglise.nom+' — '+a.eglise.groupe+'</h1>';
+  html += '<h2>Programme de rotation des prières — Jeudis · Généré le '+new Date().toLocaleDateString('fr-CA')+'</h2>';
+  html += '<button onclick="window.print()" style="padding:8px 20px;background:#7A4AB8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:16px">🖨 Imprimer / Sauvegarder en PDF</button>';
+  html += '<div class="months">';
+  Object.keys(parMois).sort().forEach(function(key) {
+    var item = parMois[key]; var mo=item.mo; var yr=item.yr;
+    var nbJours = new Date(yr,mo+1,0).getDate();
+    var offset = (new Date(yr,mo,1).getDay()+6)%7;
+    html += '<div class="month"><div class="month-title">'+moisNoms[mo]+' '+yr+'</div><div class="cal-grid">';
+    ['L','M','M','J','V','S','D'].forEach(function(j,i){ html += '<div class="day-hdr'+(i===(getJourRencontre()+6)%7?' thu':'')+'" >'+j+'</div>'; });
+    for (var i=0;i<offset;i++) html += '<div></div>';
+    for (var d=1;d<=nbJours;d++) {
+      var ds = yr+'-'+(mo+1<10?'0':'')+(mo+1)+'-'+(d<10?'0':'')+d;
+      var jourSem = new Date(ds+'T12:00:00').getDay();
+      var isJ = jourSem===getJourRencontre();
+      var rot = isJ ? item.rots.find(function(r){return r.date===ds;}) : null;
+      if (isJ && rot) {
+        var c = memColors[rot.directeur]||'#7A4AB8';
+        var isPast = ds<today;
+        html += '<div class="day thu-rot" style="background:'+(isPast?'#f5f5f5':c+'15')+';border-color:'+c+'55;opacity:'+(isPast?'.6':'1')+'">';
+        html += '<div class="day-num" style="color:'+c+'">'+d+'</div>';
+        html += '<div class="avatar" style="background:'+c+'">'+rot.directeur.slice(0,1).toUpperCase()+'</div>';
+        html += '<div class="name" style="color:'+c+'">'+rot.directeur.split(' ')[0]+'</div>';
+        if (rot.theme) html += '<div style="font-size:7px;color:#888;margin-top:1px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+rot.theme+'</div>';
+        html += '</div>';
+      } else if (isJ) {
+        html += '<div class="day" style="opacity:.3"><div class="day-num" style="color:#7A4AB8">'+d+'</div></div>';
+      } else {
+        html += '<div class="day"><div class="day-num" style="color:#ccc">'+d+'</div></div>';
+      }
+    }
+    html += '</div>';
+    // Légende
+    html += '<div class="legend">';
+    item.rots.forEach(function(r) {
+      var c2 = memColors[r.directeur]||'#7A4AB8';
+      var d2 = new Date(r.date+'T12:00:00');
+      html += '<div class="legend-item"><div class="dot" style="background:'+c2+'"></div><span><strong>'+d2.getDate()+'</strong> — '+r.directeur+(r.theme?' : '+r.theme:'')+'</span></div>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  // Légende membres
+  html += '<div style="margin-top:20px;padding:12px;border:1px solid #ddd;border-radius:8px"><div style="font-size:12px;font-weight:700;margin-bottom:8px;color:#7A4AB8">Membres du groupe</div><div style="display:flex;flex-wrap:wrap;gap:10px">';
+  a.membres.forEach(function(m,i) {
+    var c = memColors[m.prenom]||'#7A4AB8';
+    html += '<div style="display:flex;align-items:center;gap:6px;font-size:11px"><div style="width:14px;height:14px;border-radius:50%;background:'+c+'"></div><strong>#'+(i+1)+'</strong> '+m.prenom+' '+(m.nom||'')+'</div>';
+  });
+  html += '</div></div>';
+  html += '<footer>'+a.eglise.nom+' · '+a.eglise.groupe+' · Généré par FamilyOS</footer></body></html>';
+  win.document.write(html); win.document.close();
+}
+
+function imprimerTableauRotation() {
+  var a = getAutres();
+  if (!a.rotations.length) return toast('Aucune rotation à imprimer','var(--amber)');
+  var win = window.open('','_blank','width=800,height=1000');
+  if (!win) return toast('Autorisez les popups pour imprimer','var(--amber)');
+  var today = new Date().toISOString().slice(0,10);
+  var colors = ['#9A6ADA','#4A88D4','#3DAA7A','#D4A843','#E05555','#D4943A','#2A68B4','#D85A30'];
+  var memColors = {};
+  a.membres.forEach(function(m,i){ memColors[m.prenom]=colors[i%colors.length]; });
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Tableau de rotation</title>';
+  html += '<style>body{font-family:Arial,sans-serif;max-width:700px;margin:30px auto;color:#1A1A2E}';
+  html += 'h1{color:#7A4AB8;border-bottom:3px solid #7A4AB8;padding-bottom:8px}';
+  html += 'h2{color:#555;font-size:13px;font-weight:normal;margin-top:-4px}';
+  html += 'table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px}';
+  html += 'th{background:#7A4AB8;color:#fff;padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px}';
+  html += 'td{padding:9px 12px;border-bottom:1px solid #eee}';
+  html += 'tr.past td{color:#aaa}tr.today{background:#fff8e1}tr:hover td{background:#f9f5ff}';
+  html += '.avatar{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;margin-right:6px;vertical-align:middle}';
+  html += '.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}';
+  html += 'footer{margin-top:24px;text-align:center;font-size:10px;color:#aaa}';
+  html += '@media print{button{display:none!important}}</style></head><body>';
+  html += '<h1>⛪ '+a.eglise.nom+' — '+a.eglise.groupe+'</h1>';
+  html += '<h2>Programme tournant — Jeudis · Généré le '+new Date().toLocaleDateString('fr-CA')+'</h2>';
+  html += '<button onclick="window.print()" style="padding:8px 20px;background:#7A4AB8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:12px">🖨 Imprimer / Sauvegarder en PDF</button>';
+  html += '<table><tr><th>#</th><th>Date ('+JOURS_NOMS[getJourRencontre()]+')</th><th>Directeur</th><th>Thème</th><th>Statut</th></tr>';
+  a.rotations.forEach(function(r,idx) {
+    var isPast=r.date<today; var isToday=r.date===today;
+    var c = memColors[r.directeur]||'#7A4AB8';
+    var cls = isToday?'today':isPast?'past':'';
+    var statut = isToday?'<span class="badge" style="background:#fff3cd;color:#856404">Ce soir</span>':isPast?'<span class="badge" style="background:#f0f0f0;color:#888">Passé</span>':'<span class="badge" style="background:#e8f4fd;color:#1a6fa0">À venir</span>';
+    html += '<tr class="'+cls+'"><td style="font-weight:700;color:#7A4AB8">'+(idx+1)+'</td>';
+    html += '<td style="font-weight:600">'+new Date(r.date+'T12:00:00').toLocaleDateString('fr-CA',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+'</td>';
+    html += '<td><div class="avatar" style="background:'+c+'">'+r.directeur.slice(0,1).toUpperCase()+'</div>'+r.directeur+'</td>';
+    html += '<td style="color:#666">'+(r.theme||'—')+'</td><td>'+statut+'</td></tr>';
+  });
+  html += '</table>';
+  html += '<div style="margin-top:20px;padding:12px;border:1px solid #ddd;border-radius:8px"><div style="font-size:12px;font-weight:700;color:#7A4AB8;margin-bottom:8px">Membres du groupe ('+a.membres.length+')</div><div style="display:flex;flex-wrap:wrap;gap:10px">';
+  a.membres.forEach(function(m,i){ var c=memColors[m.prenom]||'#7A4AB8'; html+='<span style="display:flex;align-items:center;gap:5px;font-size:11px"><div class="avatar" style="background:'+c+';display:inline-flex">'+(i+1)+'</div>'+m.prenom+' '+(m.nom||'')+'</span>'; });
+  html += '</div></div><footer>'+a.eglise.nom+' · Généré par FamilyOS · '+new Date().toLocaleDateString('fr-CA')+'</footer></body></html>';
+  win.document.write(html); win.document.close();
+}
 setTimeout(verifierEcheances, 3000);
+setTimeout(verifierEcheancesWhatsApp, 4000);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTHENTIFICATION FAMILIALE
+// ═══════════════════════════════════════════════════════════════════════════
+var AUTH_KEY = 'familyos_auth_v1';
+var SESSION_KEY = 'familyos_session_v1';
+var LOG_KEY = 'familyos_log_v1';
+var SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 heures
+
+function loadAuth() {
+  try { return JSON.parse(localStorage.getItem(AUTH_KEY)) || {comptes:[], actif:false}; }
+  catch(e) { return {comptes:[], actif:false}; }
+}
+function saveAuth(auth) { localStorage.setItem(AUTH_KEY, JSON.stringify(auth)); }
+
+function loadLog() {
+  try { return JSON.parse(localStorage.getItem(LOG_KEY)) || []; }
+  catch(e) { return []; }
+}
+function saveLog(log) { localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
+
+function enregistrerConnexion(prenom, role, succes, raison) {
+  var log = loadLog();
+  var ua = navigator.userAgent;
+  var appareil = 'Ordinateur';
+  if (/Android/i.test(ua)) appareil = 'Android';
+  else if (/iPhone|iPad/i.test(ua)) appareil = 'iPhone/iPad';
+  else if (/Windows/i.test(ua)) appareil = 'Windows';
+  else if (/Mac/i.test(ua)) appareil = 'Mac';
+  var navigateur = 'Navigateur';
+  if (/Chrome/i.test(ua) && !/Edge/i.test(ua)) navigateur = 'Chrome';
+  else if (/Firefox/i.test(ua)) navigateur = 'Firefox';
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) navigateur = 'Safari';
+  else if (/Edge/i.test(ua)) navigateur = 'Edge';
+  log.unshift({
+    id: uid(),
+    prenom: prenom,
+    role: role || '?',
+    succes: succes,
+    raison: raison || '',
+    date: new Date().toISOString(),
+    appareil: appareil,
+    navigateur: navigateur
+  });
+  // Garder seulement les 200 derniers
+  if (log.length > 200) log = log.slice(0, 200);
+  saveLog(log);
+}
+
+function hashPin(pin) {
+  // Simple hash pour le PIN (non cryptographique mais suffisant pour usage local)
+  var h = 0;
+  for (var i = 0; i < pin.length; i++) {
+    h = ((h << 5) - h) + pin.charCodeAt(i);
+    h |= 0;
+  }
+  return 'fp_' + Math.abs(h).toString(36) + pin.length;
+}
+
+function getSession() {
+  try {
+    var s = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+    if (s && s.expiry > Date.now()) return s;
+    sessionStorage.removeItem(SESSION_KEY);
+    return null;
+  } catch(e) { return null; }
+}
+function setSession(prenom, role) {
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+    prenom: prenom, role: role, expiry: Date.now() + SESSION_DURATION
+  }));
+}
+function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
+
+// ── ÉCRAN DE CONNEXION ────────────────────────────────────────────────────
+function afficherEcranConnexion() {
+  var auth = loadAuth();
+  var overlay = document.createElement('div');
+  overlay.id = 'auth-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--fond);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+  if (!auth.actif || !auth.comptes.length) {
+    // Premier lancement — créer le compte admin
+    overlay.innerHTML = renderSetupScreen();
+  } else {
+    overlay.innerHTML = renderLoginScreen(auth.comptes);
+  }
+  document.body.appendChild(overlay);
+}
+
+function renderSetupScreen() {
+  return '<div style="max-width:420px;width:90%;background:var(--card);border-radius:20px;padding:40px 36px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">'
+    + '<div style="font-size:48px;margin-bottom:8px">🏠</div>'
+    + '<h1 style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px">FamilyOS</h1>'
+    + '<p style="font-size:14px;color:var(--text3);margin-bottom:28px">Bienvenue ! Créez le compte administrateur pour commencer.</p>'
+    + '<div style="text-align:left;margin-bottom:16px">'
+    + '<label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:6px">Prénom *</label>'
+    + '<input id="setup-prenom" placeholder="Votre prénom" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--navy4);color:var(--text);font-size:14px;box-sizing:border-box"/>'
+    + '</div>'
+    + '<div style="text-align:left;margin-bottom:16px">'
+    + '<label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:6px">Code PIN (4 caractères min.) *</label>'
+    + '<input id="setup-pin" type="password" maxlength="20" placeholder="ex: Abc123" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--navy4);color:var(--text);font-size:18px;letter-spacing:6px;text-align:center;box-sizing:border-box"/>'
+    + '</div>'
+    + '<div style="text-align:left;margin-bottom:24px">'
+    + '<label style="font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:6px">Confirmer le PIN *</label>'
+    + '<input id="setup-pin2" type="password" maxlength="20" placeholder="ex: Abc123" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--navy4);color:var(--text);font-size:18px;letter-spacing:6px;text-align:center;box-sizing:border-box"/>'
+    + '</div>'
+    + '<div id="setup-err" style="color:var(--red);font-size:12px;margin-bottom:12px;min-height:18px"></div>'
+    + '<button onclick="creerCompteAdmin()" style="width:100%;padding:14px;background:var(--gold);color:#1A1A2E;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer">Créer mon compte →</button>';
+}
+
+function renderLoginScreen(comptes) {
+  var opts = comptes.map(function(c) {
+    var col = avatarColor(c.prenom);
+    return '<div onclick="selectionnerMembre(\''+c.prenom+'\')" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px;border-radius:12px;border:2px solid transparent;transition:.15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'transparent\'">'
+      + '<div style="width:56px;height:56px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:'+col+'">'+c.prenom.slice(0,1).toUpperCase()+'</div>'
+      + '<span style="font-size:13px;font-weight:600;color:var(--text)">'+c.prenom+'</span>'
+      + '</div>';
+  }).join('');
+
+  return '<div style="max-width:480px;width:90%;background:var(--card);border-radius:20px;padding:40px 36px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">'
+    + '<div style="font-size:48px;margin-bottom:8px">🏠</div>'
+    + '<h1 style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px">FamilyOS</h1>'
+    + '<p style="font-size:14px;color:var(--text3);margin-bottom:28px">Qui êtes-vous ?</p>'
+    + '<div id="login-members" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-bottom:24px">'+opts+'</div>'
+    + '<div id="login-pin-area" style="display:none">'
+    + '<p id="login-who" style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:16px"></p>'
+    + '<input id="login-pin" type="password" maxlength="20" placeholder="ex: Abc123" style="width:100%;padding:14px;border-radius:10px;border:2px solid var(--border);background:var(--navy4);color:var(--text);font-size:22px;letter-spacing:8px;text-align:center;box-sizing:border-box" onkeydown="if(event.key===\'Enter\')validerConnexion()"/>'
+    + '<div id="login-err" style="color:var(--red);font-size:12px;margin-top:10px;min-height:18px"></div>'
+    + '<div style="display:flex;gap:10px;margin-top:16px">'
+    + '<button onclick="retourChoix()" style="flex:1;padding:12px;background:transparent;color:var(--text2);border:1px solid var(--border);border-radius:10px;font-size:14px;cursor:pointer">← Retour</button>'
+    + '<button onclick="validerConnexion()" style="flex:2;padding:12px;background:var(--gold);color:#1A1A2E;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Se connecter</button>'
+    + '</div>'
+    + '</div>'
+    + '<p style="font-size:11px;color:var(--text3);margin-top:20px">FamilyOS · Accès privé</p>'
+    + '</div>';
+}
+
+// ── ACTIONS AUTH ──────────────────────────────────────────────────────────
+var loginPrenom = '';
+
+function creerCompteAdmin() {
+  var p = document.getElementById('setup-prenom').value.trim();
+  var pin = document.getElementById('setup-pin').value;
+  var pin2 = document.getElementById('setup-pin2').value;
+  var err = document.getElementById('setup-err');
+  if (!p) { err.textContent = 'Saisissez votre prénom.'; return; }
+  if (pin.length < 4) { err.textContent = 'Le PIN doit contenir au moins 4 caractères.'; return; }
+  if (pin !== pin2) { err.textContent = 'Les deux PIN ne correspondent pas.'; return; }
+  var auth = {actif: true, comptes: [{id: uid(), prenom: p, role: 'admin', pinHash: hashPin(pin)}]};
+  saveAuth(auth);
+  enregistrerConnexion(p, 'admin', true, 'Création du compte administrateur');
+  setSession(p, 'admin');
+  document.getElementById('auth-overlay').remove();
+  toast('Bienvenue ' + p + ' ! Compte créé ✓');
+  demarrerApp();
+}
+
+function selectionnerMembre(prenom) {
+  loginPrenom = prenom;
+  document.getElementById('login-members').style.display = 'none';
+  document.getElementById('login-pin-area').style.display = 'block';
+  document.getElementById('login-who').textContent = 'Bonjour ' + prenom + ' — entrez votre PIN';
+  document.getElementById('login-pin').value = '';
+  document.getElementById('login-err').textContent = '';
+  setTimeout(function(){ document.getElementById('login-pin').focus(); }, 100);
+}
+
+function retourChoix() {
+  loginPrenom = '';
+  document.getElementById('login-members').style.display = 'grid';
+  document.getElementById('login-pin-area').style.display = 'none';
+}
+
+function validerConnexion() {
+  var pin = document.getElementById('login-pin').value;
+  var err = document.getElementById('login-err');
+  if (!pin) { err.textContent = 'Saisissez votre PIN.'; return; }
+  var auth = loadAuth();
+  var compte = auth.comptes.find(function(c){ return c.prenom === loginPrenom; });
+  if (!compte) { err.textContent = 'Compte introuvable.'; return; }
+  if (compte.pinHash !== hashPin(pin)) {
+    enregistrerConnexion(loginPrenom, compte.role, false, 'PIN incorrect');
+    err.textContent = 'PIN incorrect. Réessayez.';
+    document.getElementById('login-pin').value = '';
+    document.getElementById('login-pin').focus();
+    return;
+  }
+  enregistrerConnexion(loginPrenom, compte.role, true, '');
+  setSession(loginPrenom, compte.role);
+  document.getElementById('auth-overlay').remove();
+  toast('Bienvenue ' + loginPrenom + ' !');
+  demarrerApp();
+}
+
+function demarrerApp() {
+  render();
+  if (window.initEmailJS) initEmailJS();
+  afficherUtilisateurConnecte();
+  // Activer la présence Firebase
+  var s = getSession();
+  if (s) activerPresence(s.prenom);
+  // Si on est sur le chat, initialiser Firebase chat
+  if (currentPage === 'chat') setTimeout(initFirebaseChat, 300);
+}
+
+function seDeconnecter() {
+  if (!confirm('Se déconnecter de FamilyOS ?')) return;
+  var s = getSession();
+  if (s) {
+    enregistrerConnexion(s.prenom, s.role, false, 'Déconnexion manuelle');
+    desactiverPresence(s.prenom);
+    if (chatMsgListener) { chatMsgListener(); chatMsgListener = null; }
+    if (chatConvListener) { chatConvListener(); chatConvListener = null; }
+  }
+  clearSession();
+  // Réafficher l'écran de connexion
+  var overlay = document.createElement('div');
+  overlay.id = 'auth-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--fond);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  var auth = loadAuth();
+  overlay.innerHTML = renderLoginScreen(auth.comptes);
+  document.body.appendChild(overlay);
+}
+
+function afficherUtilisateurConnecte() {
+  var s = getSession();
+  if (!s) return;
+  var badge = document.getElementById('user-badge');
+  if (!badge) return;
+  var col = avatarColor(s.prenom);
+  badge.style.display = 'flex';
+  badge.innerHTML = '<div style="width:30px;height:30px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+col+';cursor:pointer" onclick="seDeconnecter()" title="Se déconnecter">'+s.prenom.slice(0,1).toUpperCase()+'</div>';
+}
+
+// ── GESTION DES COMPTES (dans Paramètres) ─────────────────────────────────
+function pgComptes() {
+  var auth = loadAuth();
+  var session = getSession();
+  var isAdmin = session && session.role === 'admin';
+
+  var html = '<div class="tabs">';
+  html += '<button class="tab active" onclick="switchTab(event,\'cp-comptes\')">👤 Comptes</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'cp-journal\')">📋 Journal de connexions</button>';
+  html += '</div>';
+
+  // ── COMPTES ──────────────────────────────────────────────────────────────
+  html += '<div id="cp-comptes">';
+  if (!isAdmin) {
+    html += '<div class="empty">Accès réservé à l\'administrateur.</div>';
+  } else {
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">';
+    html += '<p style="font-size:13px;color:var(--text3)">'+auth.comptes.length+' compte(s) configuré(s)</p>';
+    html += '<button class="btn btn-gold" onclick="openModal(\'modal-add-compte\')">+ Ajouter un compte</button></div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">';
+    auth.comptes.forEach(function(c) {
+      var col = avatarColor(c.prenom);
+      var logEntries = loadLog();
+      var derniere = logEntries.find(function(l){ return l.prenom===c.prenom && l.succes && l.raison !== 'Déconnexion manuelle'; });
+      html += '<div class="card" style="border-top:3px solid '+col+';padding:14px">';
+      html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">';
+      html += '<div style="width:44px;height:44px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:'+col+'">'+c.prenom.slice(0,1).toUpperCase()+'</div>';
+      html += '<div style="flex:1"><div style="font-size:14px;font-weight:600">'+c.prenom+'</div>';
+      html += '<div style="font-size:11px;color:var(--text3)">'+(c.role==='admin'?'👑 Administrateur':'👤 Membre')+'</div></div></div>';
+      if (derniere) {
+        html += '<div style="font-size:11px;color:var(--text3);background:var(--navy3);border-radius:6px;padding:6px 8px;margin-bottom:10px">';
+        html += '🕐 '+fmtDateHeure(derniere.date)+'<br>'+derniere.appareil+' · '+derniere.navigateur+'</div>';
+      } else {
+        html += '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Aucune connexion enregistrée</div>';
+      }
+      html += '<div style="display:flex;gap:6px">';
+      html += '<button class="btn btn-sm btn-outline" style="flex:1" onclick="modifierPinCompte(\''+c.id+'\')">🔑 PIN</button>';
+      if (c.prenom !== session.prenom) html += '<button class="btn btn-sm btn-outline" onclick="supprimerCompte(\''+c.id+'\')">✕</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    // Modals
+    html += '<div class="modal-bg" id="modal-add-compte"><div class="modal"><h3>👤 Nouveau compte</h3>';
+    html += '<div class="form-row"><div class="form-group"><label>Prénom *</label><input id="ac-prenom" placeholder="Prénom du membre"/></div></div>';
+    html += '<div class="form-row"><div class="form-group"><label>Rôle</label><select id="ac-role"><option value="membre">Membre</option><option value="admin">Administrateur</option></select></div></div>';
+    html += '<div class="form-row"><div class="form-group"><label>Code PIN (4 caractères min.) *</label><input type="password" maxlength="20" id="ac-pin" placeholder="ex: Abc123"/></div></div>';
+    html += '<div class="form-row"><div class="form-group"><label>Confirmer PIN *</label><input type="password" maxlength="20" id="ac-pin2" placeholder="ex: Abc123"/></div></div>';
+    html += '<div id="ac-err" style="color:var(--red);font-size:12px;margin-bottom:8px;min-height:16px"></div>';
+    html += '<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-add-compte\')">Annuler</button><button class="btn btn-gold" onclick="ajouterCompte()">Créer</button></div>';
+    html += '</div></div>';
+    html += '<div class="modal-bg" id="modal-edit-pin"><div class="modal"><h3>🔑 Modifier le PIN</h3>';
+    html += '<input type="hidden" id="ep-id"/>';
+    html += '<div class="form-row"><div class="form-group"><label>Nouveau PIN (4 caractères min.) *</label><input type="password" maxlength="20" id="ep-pin" placeholder="ex: Abc123"/></div></div>';
+    html += '<div class="form-row"><div class="form-group"><label>Confirmer *</label><input type="password" maxlength="20" id="ep-pin2" placeholder="ex: Abc123"/></div></div>';
+    html += '<div id="ep-err" style="color:var(--red);font-size:12px;margin-bottom:8px;min-height:16px"></div>';
+    html += '<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-edit-pin\')">Annuler</button><button class="btn btn-gold" onclick="sauvegarderPin()">Sauvegarder</button></div>';
+    html += '</div></div>';
+  }
+  html += '</div>';
+
+  // ── JOURNAL ──────────────────────────────────────────────────────────────
+  html += '<div id="cp-journal" style="display:none">';
+  var log = loadLog();
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">';
+  html += '<div style="font-size:13px;color:var(--text2)">'+log.length+' événement(s) enregistré(s)</div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  html += '<select id="log-filtre" onchange="filtrerJournal()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--navy4);color:var(--text2)">';
+  html += '<option value="">Tous les événements</option>';
+  html += '<option value="succes">✅ Connexions réussies</option>';
+  html += '<option value="echec">❌ Tentatives échouées</option>';
+  html += '<option value="deconnexion">🔴 Déconnexions</option>';
+  auth.comptes.forEach(function(c){ html += '<option value="'+c.prenom+'">👤 '+c.prenom+'</option>'; });
+  html += '</select>';
+  if (isAdmin) html += '<button class="btn btn-sm btn-outline" onclick="effacerJournal()" style="color:var(--red)">🗑 Effacer tout</button>';
+  html += '</div></div>';
+  html += '<div id="journal-liste">'+renderJournal(log, '')+'</div>';
+  html += '</div>';
+
+  return html;
+}
+
+function fmtDateHeure(iso) {
+  try {
+    var d = new Date(iso);
+    return d.toLocaleDateString('fr-CA') + ' à ' + d.toLocaleTimeString('fr-CA', {hour:'2-digit', minute:'2-digit'});
+  } catch(e) { return iso; }
+}
+
+function renderJournal(log, filtre) {
+  if (!log.length) return '<div class="empty">Aucun événement enregistré.</div>';
+  var filtered = filtre === 'succes' ? log.filter(function(l){ return l.succes && l.raison !== 'Déconnexion manuelle' && l.raison !== 'Session reprise'; })
+    : filtre === 'echec' ? log.filter(function(l){ return !l.succes && l.raison !== 'Déconnexion manuelle'; })
+    : filtre === 'deconnexion' ? log.filter(function(l){ return l.raison === 'Déconnexion manuelle'; })
+    : filtre ? log.filter(function(l){ return l.prenom === filtre; })
+    : log;
+  if (!filtered.length) return '<div class="empty">Aucun résultat pour ce filtre.</div>';
+  var html = '<div class="table-wrap"><table>';
+  html += '<tr><th>Date & Heure</th><th>Utilisateur</th><th>Rôle</th><th>Appareil</th><th>Navigateur</th><th>Statut</th></tr>';
+  filtered.forEach(function(l) {
+    var col = avatarColor(l.prenom);
+    var isDeconn = l.raison === 'Déconnexion manuelle';
+    var isReprise = l.raison === 'Session reprise';
+    var statutLabel, statutClass;
+    if (isDeconn)      { statutLabel = '🔴 Déconnexion';    statutClass = 'badge-gray'; }
+    else if (isReprise){ statutLabel = '🔵 Session reprise'; statutClass = 'badge-blue'; }
+    else if (l.succes) { statutLabel = '🟢 Connexion';       statutClass = 'badge-green'; }
+    else               { statutLabel = '🔴 PIN incorrect';   statutClass = 'badge-red'; }
+    html += '<tr>';
+    html += '<td style="font-size:12px;white-space:nowrap;color:var(--text2)">'+fmtDateHeure(l.date)+'</td>';
+    html += '<td><div style="display:flex;align-items:center;gap:7px"><div style="width:26px;height:26px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:'+col+'">'+l.prenom.slice(0,1).toUpperCase()+'</div><span style="font-weight:500;font-size:13px">'+l.prenom+'</span></div></td>';
+    html += '<td style="font-size:11px;color:var(--text3)">'+(l.role==='admin'?'👑 Admin':'👤 Membre')+'</td>';
+    html += '<td style="font-size:12px">'+l.appareil+'</td>';
+    html += '<td style="font-size:12px">'+l.navigateur+'</td>';
+    html += '<td><span class="badge '+statutClass+'" style="font-size:10px;white-space:nowrap">'+statutLabel+'</span></td>';
+    html += '</tr>';
+  });
+  html += '</table></div>';
+  return html;
+}
+
+function filtrerJournal() {
+  var filtre = document.getElementById('log-filtre').value;
+  document.getElementById('journal-liste').innerHTML = renderJournal(loadLog(), filtre);
+}
+
+function effacerJournal() {
+  if (!confirm('Effacer tout le journal de connexions ? Cette action est irréversible.')) return;
+  saveLog([]);
+  render();
+  toast('Journal effacé ✓');
+}
+
+function ajouterCompte() {
+  var p = document.getElementById('ac-prenom').value.trim();
+  var role = document.getElementById('ac-role').value;
+  var pin = document.getElementById('ac-pin').value;
+  var pin2 = document.getElementById('ac-pin2').value;
+  var err = document.getElementById('ac-err');
+  if (!p) { err.textContent = 'Saisissez un prénom.'; return; }
+  if (pin.length < 4) { err.textContent = 'PIN : minimum 4 caractères (lettres et/ou chiffres).'; return; }
+  if (pin !== pin2) { err.textContent = 'Les PIN ne correspondent pas.'; return; }
+  var auth = loadAuth();
+  if (auth.comptes.find(function(c){ return c.prenom.toLowerCase()===p.toLowerCase(); })) { err.textContent = 'Ce prénom existe déjà.'; return; }
+  auth.comptes.push({id:uid(), prenom:p, role:role, pinHash:hashPin(pin)});
+  saveAuth(auth);
+  closeModal('modal-add-compte');
+  renderPageComptes();
+  toast('Compte créé pour ' + p + ' ✓');
+}
+
+function modifierPinCompte(id) {
+  document.getElementById('ep-id').value = id;
+  document.getElementById('ep-pin').value = '';
+  document.getElementById('ep-pin2').value = '';
+  document.getElementById('ep-err').textContent = '';
+  openModal('modal-edit-pin');
+}
+
+function sauvegarderPin() {
+  var id = document.getElementById('ep-id').value;
+  var pin = document.getElementById('ep-pin').value;
+  var pin2 = document.getElementById('ep-pin2').value;
+  var err = document.getElementById('ep-err');
+  if (pin.length < 4) { err.textContent = 'PIN : minimum 4 caractères (lettres et/ou chiffres).'; return; }
+  if (pin !== pin2) { err.textContent = 'Les PIN ne correspondent pas.'; return; }
+  var auth = loadAuth();
+  var c = auth.comptes.find(function(c){ return c.id===id; });
+  if (!c) return;
+  c.pinHash = hashPin(pin);
+  saveAuth(auth);
+  closeModal('modal-edit-pin');
+  toast('PIN mis à jour ✓');
+}
+
+function supprimerCompte(id) {
+  var auth = loadAuth();
+  var c = auth.comptes.find(function(x){ return x.id===id; });
+  if (!confirm('Supprimer le compte de ' + (c?c.prenom:'ce membre') + ' ?')) return;
+  auth.comptes = auth.comptes.filter(function(x){ return x.id!==id; });
+  saveAuth(auth);
+  renderPageComptes();
+  toast('Compte supprimé ✓');
+}
+
+function renderPageComptes() {
+  var contentEl = document.getElementById('content');
+  if (contentEl) contentEl.innerHTML = pgComptes();
+  attachEvents();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODULE CHAT — Messagerie familiale
+// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// FIREBASE INITIALISATION
+// ═══════════════════════════════════════════════════════════════════════════
+var firebaseConfig = {
+  apiKey: "AIzaSyAdc7ZT9a_kDH3r8jVT9jKpGgz1mF8LTfk",
+  authDomain: "familyos-c81c2.firebaseapp.com",
+  databaseURL: "https://familyos-c81c2-default-rtdb.firebaseio.com",
+  projectId: "familyos-c81c2",
+  storageBucket: "familyos-c81c2.firebasestorage.app",
+  messagingSenderId: "904988336719",
+  appId: "1:904988336719:web:e44f98264f1ca688a2803a"
+};
+var fbApp = firebase.initializeApp(firebaseConfig);
+var db   = firebase.firestore();
+var rtdb = firebase.database();
+var chatMsgListener = null; // listener actif sur les messages
+var chatConvListener = null; // listener actif sur les conversations
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODULE CHAT — Firebase temps réel
+// ═══════════════════════════════════════════════════════════════════════════
+var chatConvActive = 'general';
+var presenceOnline = {}; // cache des membres en ligne
+
+// ── PRÉSENCE ──────────────────────────────────────────────────────────────
+function activerPresence(prenom) {
+  var ref = rtdb.ref('presence/' + prenom);
+  var ua  = navigator.userAgent;
+  var appareil = /Android/i.test(ua)?'Android':/iPhone|iPad/i.test(ua)?'iPhone':/Windows/i.test(ua)?'Windows':'Ordinateur';
+  ref.set({online:true, lastSeen:firebase.database.ServerValue.TIMESTAMP, appareil:appareil});
+  ref.onDisconnect().update({online:false, lastSeen:firebase.database.ServerValue.TIMESTAMP});
+  // Écouter tous les membres
+  rtdb.ref('presence').on('value', function(snap) {
+    presenceOnline = snap.val() || {};
+    // Mettre à jour les points verts dans la sidebar si le chat est actif
+    var sidebar = document.getElementById('chat-presence-area');
+    if (sidebar) renderPresenceSidebar();
+  });
+}
+function desactiverPresence(prenom) {
+  rtdb.ref('presence/' + prenom).update({online:false, lastSeen:firebase.database.ServerValue.TIMESTAMP});
+}
+function renderPresenceSidebar() {
+  var auth = loadAuth();
+  var moi  = getSession() ? getSession().prenom : '';
+  var html = '';
+  auth.comptes.forEach(function(c) {
+    var p = presenceOnline[c.prenom] || {};
+    var online = p.online === true;
+    var col = avatarColor(c.prenom);
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0">';
+    html += '<div style="position:relative;width:30px;height:30px">';
+    html += '<div style="width:30px;height:30px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:'+col+'">'+c.prenom.slice(0,1).toUpperCase()+'</div>';
+    html += '<div style="position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;background:'+(online?'#3DAA7A':'#888')+';border:2px solid var(--navy3)"></div>';
+    html += '</div>';
+    html += '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--text)">'+c.prenom+(c.prenom===moi?' (moi)':'')+'</div>';
+    html += '<div style="font-size:10px;color:'+(online?'#3DAA7A':'var(--text3)')+'">'+( online?'● En ligne':'○ Hors ligne')+'</div></div>';
+    html += '</div>';
+  });
+  var area = document.getElementById('chat-presence-area');
+  if (area) area.innerHTML = html;
+}
+
+// ── PAGE CHAT ─────────────────────────────────────────────────────────────
+function pgChat() {
+  var session = getSession();
+  if (!session) return '<div class="empty">Connectez-vous pour accéder au chat.</div>';
+  var moi  = session.prenom;
+  var auth = loadAuth();
+
+  var html = '<div style="display:flex;gap:0;height:calc(100vh - 120px);border-radius:14px;overflow:hidden;border:1px solid var(--border)">';
+
+  // ── SIDEBAR ──────────────────────────────────────────────────────────────
+  html += '<div style="width:240px;flex-shrink:0;background:var(--navy3);border-right:1px solid var(--border);display:flex;flex-direction:column">';
+  // Header
+  html += '<div style="padding:12px 14px;border-bottom:1px solid var(--border)">';
+  html += '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">💬 Chat famille</div>';
+  html += '<button class="btn btn-gold btn-sm" style="width:100%;font-size:12px" onclick="openModal(\'modal-new-conv\')">+ Nouveau groupe</button>';
+  html += '</div>';
+  // Liste conversations (chargée dynamiquement)
+  html += '<div id="chat-conv-list" style="flex:1;overflow-y:auto;padding:8px">';
+  html += '<div style="text-align:center;padding:20px;font-size:12px;color:var(--text3)">Chargement...</div>';
+  html += '</div>';
+  // Présence
+  html += '<div style="padding:10px 14px;border-top:1px solid var(--border)">';
+  html += '<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Membres</div>';
+  html += '<div id="chat-presence-area"></div>';
+  html += '</div>';
+  // Profil connecté
+  var col0 = avatarColor(moi);
+  html += '<div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">';
+  html += '<div style="position:relative"><div style="width:28px;height:28px;border-radius:50%;background:'+col0+'22;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:'+col0+'">'+moi.slice(0,1).toUpperCase()+'</div>';
+  html += '<div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-radius:50%;background:#3DAA7A;border:2px solid var(--navy3)"></div></div>';
+  html += '<div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">'+moi+'</div>';
+  html += '<button onclick="seDeconnecter()" title="Déconnecter" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px">🔒</button>';
+  html += '</div></div>';
+
+  // ── ZONE MESSAGES ─────────────────────────────────────────────────────────
+  html += '<div style="flex:1;display:flex;flex-direction:column;background:var(--navy4)">';
+  html += '<div id="chat-header" style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--navy3)">';
+  html += '<div style="font-size:14px;font-weight:600;color:var(--text)">Chargement...</div></div>';
+  html += '<div id="chat-messages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px">';
+  html += '<div style="text-align:center;color:var(--text3);font-size:13px;margin:auto">⏳ Connexion à Firebase...</div>';
+  html += '</div>';
+  // Zone saisie
+  html += '<div style="padding:10px 14px;border-top:1px solid var(--border);background:var(--navy3)">';
+  html += '<div style="display:flex;gap:8px;align-items:flex-end">';
+  html += '<div style="flex:1;background:var(--navy4);border-radius:20px;border:1px solid var(--border);padding:8px 14px">';
+  html += '<textarea id="chat-input" placeholder="Écrire un message..." rows="1" style="width:100%;background:none;border:none;color:var(--text);font-size:13px;resize:none;outline:none;max-height:80px;font-family:inherit;line-height:1.5" onkeydown="chatKeyDown(event)" oninput="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\'"></textarea>';
+  html += '</div>';
+  html += '<button onclick="envoyerMessage()" style="width:40px;height:40px;border-radius:50%;background:var(--gold);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0">➤</button>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:6px;margin-top:6px">';
+  ['👍','❤️','😂','🙏','✅','⚠️'].forEach(function(e){
+    html += '<button onclick="envoyerEmoji(\''+e+'\')" style="background:none;border:none;cursor:pointer;font-size:16px;padding:3px;border-radius:6px" onmouseover="this.style.background=\'var(--navy4)\'" onmouseout="this.style.background=\'none\'">'+e+'</button>';
+  });
+  html += '</div></div></div></div>';
+
+  // Modal nouveau groupe
+  var memOpts = auth.comptes.filter(function(c){return c.prenom!==moi;}).map(function(c){
+    return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer"><input type="checkbox" value="'+c.prenom+'" style="accent-color:var(--gold)"/><span>'+c.prenom+'</span></label>';
+  }).join('');
+  html += '<div class="modal-bg" id="modal-new-conv"><div class="modal"><h3>💬 Nouveau groupe</h3>';
+  html += '<div class="form-row"><div class="form-group"><label>Nom du groupe</label><input id="conv-nom" placeholder="Ex: Organisation vacances"/></div></div>';
+  html += '<div class="form-row"><div class="form-group"><label>Icône</label><input id="conv-icone" value="💬" style="font-size:18px;width:60px;text-align:center"/></div></div>';
+  html += '<div class="form-row"><div class="form-group"><label>Membres</label><div style="max-height:140px;overflow-y:auto">'+memOpts+'</div></div></div>';
+  html += '<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(\'modal-new-conv\')">Annuler</button><button class="btn btn-gold" onclick="creerGroupe()">Créer</button></div>';
+  html += '</div></div>';
+
+  return html;
+}
+
+// ── ACTIONS FIREBASE CHAT ─────────────────────────────────────────────────
+function initFirebaseChat() {
+  var session = getSession();
+  if (!session) return;
+  var moi = session.prenom;
+
+  // Créer canal général si absent
+  db.collection('chat_conversations').doc('general').set({
+    id: 'general', nom: 'Famille — Général', type: 'general', icone: '🏠', creePar: '', creeAt: new Date().toISOString()
+  }, {merge: true});
+
+  // Écouter les conversations
+  if (chatConvListener) chatConvListener();
+  chatConvListener = db.collection('chat_conversations').orderBy('creeAt','asc').onSnapshot(function(snap) {
+    var convs = [];
+    snap.forEach(function(d) { convs.push(d.data()); });
+    renderConvList(convs, moi);
+  }, function() {
+    // Fallback si pas connecté
+    renderConvList([{id:'general',nom:'Famille — Général',type:'general',icone:'🏠'}], moi);
+  });
+
+  // S'abonner aux messages de la conv active
+  abonnerMessages(chatConvActive, moi);
+  renderPresenceSidebar();
+}
+
+function renderConvList(convs, moi) {
+  var auth = loadAuth();
+  var area = document.getElementById('chat-conv-list');
+  if (!area) return;
+  var html = '';
+
+  // Conversations depuis Firestore
+  convs.forEach(function(conv) {
+    var estMembre = conv.type==='general' || (conv.membres && conv.membres.indexOf(moi)>=0);
+    if (!estMembre) return;
+    var isActive = conv.id === chatConvActive;
+    var col = conv.type==='prive' ? avatarColor(conv.nom) : null;
+    html += '<div onclick="changerConversation(\''+conv.id+'\')" style="cursor:pointer;padding:9px 10px;border-radius:9px;margin-bottom:3px;background:'+(isActive?'var(--navy4)':'transparent')+';border:1px solid '+(isActive?'var(--border)':'transparent')+'">';
+    html += '<div style="display:flex;align-items:center;gap:8px">';
+    if (col) {
+      html += '<div style="width:32px;height:32px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+col+';flex-shrink:0">'+conv.nom.slice(0,1).toUpperCase()+'</div>';
+    } else {
+      html += '<span style="font-size:20px;flex-shrink:0">'+conv.icone+'</span>';
+    }
+    html += '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+conv.nom+'</div>';
+    html += '<div style="font-size:10px;color:var(--text3)">'+(conv.type==='general'?'Tous les membres':conv.type==='prive'?'Message privé':'Groupe')+'</div></div></div></div>';
+  });
+
+  // Conversations privées avec chaque membre
+  auth.comptes.forEach(function(c) {
+    if (c.prenom === moi) return;
+    var privId = [moi, c.prenom].sort().join('__');
+    var alreadyShown = convs.find(function(cv){return cv.id===privId;});
+    if (alreadyShown) return;
+    var isActive = privId === chatConvActive;
+    var col = avatarColor(c.prenom);
+    var p = presenceOnline[c.prenom] || {};
+    html += '<div onclick="ouvrirConvPrivee(\''+c.prenom+'\')" style="cursor:pointer;padding:9px 10px;border-radius:9px;margin-bottom:3px;background:'+(isActive?'var(--navy4)':'transparent')+';border:1px solid '+(isActive?'var(--border)':'transparent')+'">';
+    html += '<div style="display:flex;align-items:center;gap:8px">';
+    html += '<div style="position:relative;width:32px;height:32px">';
+    html += '<div style="width:32px;height:32px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+col+'">'+c.prenom.slice(0,1).toUpperCase()+'</div>';
+    html += '<div style="position:absolute;bottom:0;right:0;width:8px;height:8px;border-radius:50%;background:'+(p.online?'#3DAA7A':'#888')+';border:2px solid var(--navy3)"></div>';
+    html += '</div>';
+    html += '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--text)">'+c.prenom+'</div>';
+    html += '<div style="font-size:10px;color:'+(p.online?'#3DAA7A':'var(--text3)')+'">'+( p.online?'En ligne':'Hors ligne')+'</div></div></div></div>';
+  });
+
+  area.innerHTML = html || '<div style="font-size:12px;color:var(--text3);text-align:center;padding:16px">Aucune conversation</div>';
+}
+
+function abonnerMessages(convId, moi) {
+  // Désabonner l'ancien listener
+  if (chatMsgListener) { chatMsgListener(); chatMsgListener = null; }
+
+  // Mettre à jour l'en-tête
+  var header = document.getElementById('chat-header');
+  if (header) {
+    var icons = {general:'🏠'};
+    var nomConv = convId === 'general' ? 'Famille — Général' : convId.includes('__') ? convId.replace(moi,'').replace('__','') : convId;
+    header.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">'+(icons[convId]||'💬')+'</span><div><div style="font-size:14px;font-weight:600;color:var(--text)">'+nomConv+'</div><div style="font-size:11px;color:var(--text3)">Conversation en temps réel</div></div></div>';
+  }
+
+  // Écouter les messages en temps réel
+  chatMsgListener = db.collection('chat_messages').doc(convId).collection('msgs')
+    .orderBy('date','asc').limit(100)
+    .onSnapshot(function(snap) {
+      var msgs = [];
+      snap.forEach(function(d) { msgs.push(d.data()); });
+      afficherMessages(msgs, moi);
+    }, function(err) {
+      var el = document.getElementById('chat-messages');
+      if (el) el.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:13px;margin:auto">⚠️ Connexion Firebase perdue. Vérifiez internet.</div>';
+    });
+}
+
+function afficherMessages(msgs, moi) {
+  var el = document.getElementById('chat-messages');
+  if (!el) return;
+  if (!msgs.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:13px;margin:auto">Aucun message — soyez le premier ! 👋</div>';
+    return;
+  }
+  var html = '';
+  var prevDate = '';
+  msgs.forEach(function(msg) {
+    var isMoi = msg.auteur === moi;
+    var col = avatarColor(msg.auteur);
+    var dateMsg = new Date(msg.date);
+    var dateStr = dateMsg.toLocaleDateString('fr-CA');
+    if (dateStr !== prevDate) {
+      html += '<div style="text-align:center;margin:6px 0"><span style="font-size:11px;background:var(--navy3);color:var(--text3);padding:3px 12px;border-radius:20px">'+dateStr+'</span></div>';
+      prevDate = dateStr;
+    }
+    html += '<div style="display:flex;flex-direction:'+(isMoi?'row-reverse':'row')+';align-items:flex-end;gap:7px">';
+    if (!isMoi) html += '<div style="width:28px;height:28px;border-radius:50%;background:'+col+'22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:'+col+';flex-shrink:0">'+msg.auteur.slice(0,1).toUpperCase()+'</div>';
+    html += '<div style="max-width:65%">';
+    if (!isMoi) html += '<div style="font-size:10px;color:var(--text3);margin-bottom:2px;margin-left:4px">'+msg.auteur+'</div>';
+    html += '<div style="background:'+(isMoi?'var(--gold)':'var(--navy3)')+';color:'+(isMoi?'#1A1A2E':'var(--text)')+';padding:9px 13px;border-radius:'+(isMoi?'18px 18px 4px 18px':'18px 18px 18px 4px')+';font-size:13px;line-height:1.5;word-break:break-word">'+msg.texte.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')+'</div>';
+    html += '<div style="font-size:10px;color:var(--text3);margin-top:2px;text-align:'+(isMoi?'right':'left')+';margin-'+(isMoi?'right':'left')+':4px">'+dateMsg.toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+(isMoi?' ✓':'')+'</div>';
+    html += '</div></div>';
+  });
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
+}
+
+function changerConversation(convId) {
+  chatConvActive = convId;
+  var moi = getSession() ? getSession().prenom : '';
+  // Mettre à jour visuellement la sidebar
+  document.querySelectorAll('#chat-conv-list > div').forEach(function(d){ d.style.background='transparent'; d.style.border='1px solid transparent'; });
+  abonnerMessages(convId, moi);
+  var inp = document.getElementById('chat-input');
+  if (inp) inp.focus();
+}
+
+function ouvrirConvPrivee(autrePrenom) {
+  var moi = getSession() ? getSession().prenom : '';
+  var privId = [moi, autrePrenom].sort().join('__');
+  db.collection('chat_conversations').doc(privId).set({
+    id:privId, nom:autrePrenom, type:'prive', icone:'👤', membres:[moi,autrePrenom], creePar:moi, creeAt:new Date().toISOString()
+  }, {merge:true});
+  chatConvActive = privId;
+  abonnerMessages(privId, moi);
+}
+
+function envoyerMessage() {
+  var session = getSession();
+  if (!session) return;
+  var inp = document.getElementById('chat-input');
+  var texte = inp ? inp.value.trim() : '';
+  if (!texte) return;
+  db.collection('chat_messages').doc(chatConvActive).collection('msgs').add({
+    id: uid(), auteur: session.prenom, texte: texte,
+    date: new Date().toISOString(), type: 'texte'
+  });
+  if (inp) { inp.value = ''; inp.style.height = 'auto'; inp.focus(); }
+}
+
+function envoyerEmoji(emoji) {
+  var inp = document.getElementById('chat-input');
+  if (inp) { inp.value += emoji; inp.focus(); }
+}
+
+function chatKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyerMessage(); }
+}
+
+function creerGroupe() {
+  var nom = document.getElementById('conv-nom').value.trim();
+  var icone = document.getElementById('conv-icone').value || '💬';
+  if (!nom) return toast('Saisissez un nom', 'var(--red2)');
+  var cases = document.querySelectorAll('#modal-new-conv input[type="checkbox"]:checked');
+  var membres = [getSession().prenom];
+  cases.forEach(function(c){ membres.push(c.value); });
+  if (membres.length < 2) return toast('Ajoutez au moins un autre membre', 'var(--red2)');
+  var convId = 'grp_' + uid();
+  db.collection('chat_conversations').doc(convId).set({
+    id:convId, nom:nom, type:'groupe', icone:icone, membres:membres, creePar:getSession().prenom, creeAt:new Date().toISOString()
+  });
+  closeModal('modal-new-conv');
+  chatConvActive = convId;
+  toast('Groupe "'+nom+'" créé ✓');
+}
+
+function supprimerConversation(convId) {
+  if (!confirm('Supprimer cette conversation ?')) return;
+  db.collection('chat_conversations').doc(convId).delete();
+  chatConvActive = 'general';
+  render();
+  toast('Conversation supprimée', 'var(--red2)');
+}
+
+
+appliquerTheme();
+var _session = getSession();
+if (_session) {
+  // Session encore valide — démarrer directement
+  enregistrerConnexion(_session.prenom, _session.role, true, 'Session reprise');
+  demarrerApp();
+} else {
+  // Afficher l'écran de connexion
+  afficherEcranConnexion();
+}
 </script>
 </body>
 </html>
