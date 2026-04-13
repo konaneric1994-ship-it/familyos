@@ -187,6 +187,7 @@ tr:last-child td{border-bottom:none}
   <button class="nav-item" data-page="finances"><span class="nav-icon">💰</span>Finances</button>
   <button class="nav-item" data-page="loisirs"><span class="nav-icon">🎉</span>Divertissements</button>
   <button class="nav-item" data-page="investissements"><span class="nav-icon">📈</span>Investissements</button>
+  <button class="nav-item" data-page="hypotheque"><span class="nav-icon">🏡</span>Hypothèque</button>
   <button class="nav-item" data-page="objectifs"><span class="nav-icon">🎯</span>Objectifs</button>
   <button class="nav-item" data-page="taches"><span class="nav-icon">✅</span>Tâches & Agenda</button>
   <div class="nav-section">Système</div>
@@ -324,12 +325,14 @@ function appliquerTheme() {
   }
 }
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
-var PAGES = {dashboard:pgDashboard, spirituel:pgSpirituels, education:pgEducation, finances:pgFinances, loisirs:pgLoisirs, investissements:pgInvestissements, objectifs:pgObjectifs, taches:pgTaches, membres:pgMembres, autres:pgAutres, chat:pgChat, comptes:pgComptes, parametres:pgParametres};
-var TITLES = {dashboard:'Tableau de bord', spirituel:'Spiritualité', education:'Éducation & Formation', finances:'Finances', loisirs:'Divertissements', investissements:'Investissements', objectifs:'Objectifs (PMP)', taches:'Tâches & Agenda', membres:'Membres de la famille', autres:'Groupe d\'Église — Programme de prière', chat:'Chat — Messagerie familiale', comptes:'Accès & Sécurité', parametres:'Paramètres'};
+var PAGES = {dashboard:pgDashboard, spirituel:pgSpirituels, education:pgEducation, finances:pgFinances, loisirs:pgLoisirs, investissements:pgInvestissements, hypotheque:pgHypotheque, objectifs:pgObjectifs, taches:pgTaches, membres:pgMembres, autres:pgAutres, chat:pgChat, comptes:pgComptes, parametres:pgParametres};
+var TITLES = {dashboard:'Tableau de bord', spirituel:'Spiritualité', education:'Éducation & Formation', finances:'Finances', loisirs:'Divertissements', investissements:'Investissements', hypotheque:'Calculateur Hypothécaire', objectifs:'Objectifs (PMP)', taches:'Tâches & Agenda', membres:'Membres de la famille', autres:'Groupe d\'Église — Programme de prière', chat:'Chat — Messagerie familiale', comptes:'Accès & Sécurité', parametres:'Paramètres'};
 var currentPage = 'dashboard';
 
 document.querySelectorAll('.nav-item').forEach(function(btn) {
   btn.addEventListener('click', function() {
+    // Sauvegarder l'état du calculateur hypothécaire AVANT de changer de page
+    if (currentPage === 'hypotheque') sauverHypState();
     document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
     currentPage = btn.dataset.page;
@@ -361,27 +364,17 @@ function render() {
   // 2. Recharger le contenu
   document.getElementById('content').innerHTML = PAGES[currentPage]();
   attachEvents();
-  // Scroll chat to bottom after render
-  if (currentPage === 'chat') {
-    setTimeout(function(){
-      initFirebaseChat();
-      var inp = document.getElementById('chat-input');
-      if (inp) inp.focus();
-    }, 300);
-  }
 
   // 3. Restaurer l'onglet mémorisé
   var savedTab = activeTabMap[currentPage];
   if (savedTab) {
     var targetEl = document.getElementById(savedTab);
     if (targetEl) {
-      // Trouver le préfixe (ex: "eg-membres" → "eg-")
-      var dash = savedTab.indexOf('-');
-      var prefix = dash >= 0 ? savedTab.slice(0, dash+1) : savedTab;
-
-      // Masquer tous les panneaux du groupe, afficher le bon
-      document.querySelectorAll('[id^="'+prefix+'"]').forEach(function(el) {
-        el.style.display = (el.id === savedTab) ? '' : 'none';
+      // Masquer tous les panneaux frères, afficher le bon (même niveau parent seulement)
+      var parent = targetEl.parentNode;
+      Array.prototype.forEach.call(parent.children, function(child) {
+        if (child.classList && child.classList.contains('tabs')) return;
+        child.style.display = (child.id === savedTab) ? '' : 'none';
       });
 
       // Activer le bon onglet dans la barre
@@ -389,11 +382,7 @@ function render() {
         var onc = tab.getAttribute('onclick') || '';
         var m = onc.match(/'([^']+)'/);
         var tabId = m ? m[1] : '';
-        if (tabId === savedTab) {
-          tab.classList.add('active');
-        } else if (tabId.indexOf(prefix) === 0) {
-          tab.classList.remove('active');
-        }
+        tab.classList.toggle('active', tabId === savedTab);
       });
 
       // Re-render spéciaux
@@ -401,6 +390,19 @@ function render() {
       if (savedTab === 'ta-kanban') targetEl.innerHTML = renderKanban();
       if (savedTab === 'ta-gantt')  targetEl.innerHTML = renderGantt();
     }
+  }
+
+  // Post-render : actions spécifiques par page (APRÈS restauration des onglets)
+  if (currentPage === 'hypotheque') {
+    calcHypotheque();
+    majHintPctMin(hypState.prix);
+  }
+  if (currentPage === 'chat') {
+    setTimeout(function(){
+      initFirebaseChat();
+      var inp = document.getElementById('chat-input');
+      if (inp) inp.focus();
+    }, 300);
   }
 }
 
@@ -433,19 +435,28 @@ function navTo(p) { document.querySelector('[data-page="'+p+'"]').click(); }
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function switchTab(evt, target) {
-  var dashIdx = target.indexOf('-');
-  var prefix = dashIdx >= 0 ? target.slice(0, dashIdx+1) : target;
   evt.target.closest('.tabs').querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
   evt.target.classList.add('active');
-  document.querySelectorAll('[id^="'+prefix+'"]').forEach(function(el) {
-    el.style.display = el.id === target ? '' : 'none';
-  });
+
+  // Trouver l'élément cible et n'agir que sur ses FRÈRES (même niveau parent)
+  var targetEl = document.getElementById(target);
+  if (targetEl) {
+    var parent = targetEl.parentNode;
+    Array.prototype.forEach.call(parent.children, function(child) {
+      if (child.classList && child.classList.contains('tabs')) return; // ignorer la barre d'onglets
+      child.style.display = (child.id === target) ? '' : 'none';
+    });
+  }
+
   // Mémoriser l'onglet choisi pour la page courante
   activeTabMap[currentPage] = target;
   // Rendu à la demande
   if (target === 'ta-agenda') { var ag=document.getElementById('ta-agenda'); if(ag) ag.innerHTML=renderCalendrier(); }
   if (target === 'ta-kanban') { var kb=document.getElementById('ta-kanban'); if(kb) kb.innerHTML=renderKanban(); }
   if (target === 'ta-gantt')  { var gt=document.getElementById('ta-gantt');  if(gt) gt.innerHTML=renderGantt(); }
+  if (target === 'hyp-calc')  { calcHypotheque(); majHintPctMin(hypState.prix); }
+  if (target === 'hyp-amort') { genererTableauAmort(); }
+  if (target === 'hyp-taxes') { calcTaxes(); }
 }
 function attachEvents() {
   document.querySelectorAll('.modal-bg').forEach(function(m) {
@@ -3407,6 +3418,525 @@ function supprimerConversation(convId) {
   toast('Conversation supprimée', 'var(--red2)');
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGE: CALCULATEUR HYPOTHÉCAIRE (modèle REALTOR.ca Canada)
+// ═══════════════════════════════════════════════════════════════════════════
+function pgHypotheque() {
+  var html = '<div class="tabs">';
+  html += '<button class="tab active" onclick="switchTab(event,\'hyp-calc\')">🏡 Calculateur</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'hyp-amort\');genererTableauAmort()">📊 Amortissement</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'hyp-taxes\');calcTaxes()">🏛 Droits de mutation</button>';
+  html += '<button class="tab" onclick="switchTab(event,\'hyp-sauv\')">💾 Mes calculs</button>';
+  html += '</div>';
+
+  html += '<div id="hyp-calc">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">';
+  html += '<div><div class="card" style="padding:18px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px">Paramètres du prêt</div>';
+  html += '<div class="form-group" style="margin-bottom:14px"><label>Prix d\'achat ($)</label><input type="number" id="hyp-prix" value="'+hypState.prix+'" min="0" step="1000" oninput="sauverHypState();calcHypotheque()" style="font-size:16px;font-weight:600"/></div>';
+  html += '<div class="form-group" style="margin-bottom:8px"><label>Mise de fonds</label>';
+  html += '<div style="display:flex;gap:8px"><input type="number" id="hyp-mise" value="'+hypState.mise+'" min="0" step="1000" oninput="sauverHypState();syncMisePct()" style="flex:2"/>';
+  html += '<div style="position:relative;flex:1"><input type="number" id="hyp-mise-pct" value="'+hypState.misePct+'" min="5" max="100" step="0.01" oninput="sauverHypState();syncMiseMontant()" onblur="validerPctMise()" style="width:100%;padding-right:24px"/><span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px">%</span></div></div>';
+  html += '<div id="hyp-pct-hint" style="font-size:11px;color:var(--text3);margin-top:3px">Min. requis : 5% (basé sur le prix)</div>';
+  html += '<div id="hyp-cmhc-msg" style="font-size:11px;margin-top:4px"></div></div>';
+  html += '<div class="form-group" style="margin-bottom:14px"><label>Taux d\'intérêt annuel (%)</label>';
+  html += '<div style="position:relative"><input type="number" id="hyp-taux" value="'+hypState.taux+'" min="0" max="30" step="0.01" oninput="sauverHypState();calcHypotheque()" style="padding-right:30px"/>';
+  html += '<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px">%</span></div></div>';
+  html += '<div class="form-group" style="margin-bottom:14px"><label>Période d\'amortissement</label>';
+  html += '<select id="hyp-amort-periode" onchange="sauverHypState();calcHypotheque()">';
+  [5,10,15,20,25,30].forEach(function(a){ html += '<option value="'+a+'"'+(a===hypState.amort?' selected':'')+'>'+a+' ans</option>'; });
+  html += '</select></div>';
+  html += '<div class="form-group" style="margin-bottom:14px"><label>Terme du prêt</label>';
+  html += '<select id="hyp-terme" onchange="sauverHypState();calcHypotheque()">';
+  [1,2,3,4,5,7,10].forEach(function(t){ html += '<option value="'+t+'"'+(t===hypState.terme?' selected':'')+'>'+t+' an'+(t>1?'s':'')+' (fixe)</option>'; });
+  html += '</select></div>';
+  html += '<div class="form-group" style="margin-bottom:14px"><label>Fréquence de paiement</label>';
+  html += '<select id="hyp-freq" onchange="sauverHypState();calcHypotheque()">';
+  [['12','Mensuel'],['24','Bimensuel (2x/mois)'],['26','Bihebdomadaire (aux 2 sem.)'],['26acc','Bihebdomadaire accéléré'],['52','Hebdomadaire'],['52acc','Hebdomadaire accéléré']].forEach(function(f){
+    html += '<option value="'+f[0]+'"'+(f[0]===hypState.freq?' selected':'')+'>'+f[1]+'</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="form-group" style="margin-bottom:16px"><label>Type de taux</label>';
+  html += '<select id="hyp-type-taux" onchange="sauverHypState();calcHypotheque()">';
+  html += '<option value="fixe"'+(hypState.typeTaux==='fixe'?' selected':'')+'>Fixe (composition semi-annuelle)</option>';
+  html += '<option value="variable"'+(hypState.typeTaux==='variable'?' selected':'')+'>Variable (composition mensuelle)</option>';
+  html += '</select></div>';
+  html += '<div class="form-group" style="margin-bottom:16px"><label>Province</label>';
+  html += '<select id="hyp-province" onchange="sauverHypState();calcHypotheque()">';
+  [['QC','Québec'],['ON','Ontario'],['BC','Colombie-Britannique'],['AB','Alberta'],['MB','Manitoba'],['SK','Saskatchewan'],['NS','Nouvelle-Écosse'],['NB','Nouveau-Brunswick'],['PE','Île-du-Prince-Édouard'],['NL','Terre-Neuve']].forEach(function(p){ html += '<option value="'+p[0]+'"'+(p[0]===hypState.province?' selected':'')+'>'+p[1]+'</option>'; });
+  html += '</select></div>';
+  html += '<button class="btn btn-gold" style="width:100%" onclick="sauvegarderCalcHyp()">💾 Sauvegarder ce calcul</button>';
+  html += '</div></div>';
+  html += '<div><div id="hyp-resultats"><div class="card" style="padding:18px;text-align:center;color:var(--text3)">Entrez les paramètres pour voir les résultats...</div></div></div>';
+  html += '</div></div>';
+
+  html += '<div id="hyp-amort" style="display:none">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html += '<div style="font-size:13px;color:var(--text2)">Tableau basé sur les paramètres du calculateur</div>';
+  html += '<button class="btn btn-outline btn-sm" onclick="imprimerAmortissement()">🖨 Imprimer</button></div>';
+  html += '<div id="hyp-amort-table"><div class="empty">Calculez d\'abord dans l\'onglet Calculateur.</div></div></div>';
+
+  html += '<div id="hyp-taxes" style="display:none">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">';
+  html += '<div class="card" style="padding:18px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:14px">Droits de mutation / Taxe de bienvenue</div>';
+  html += '<div class="form-group" style="margin-bottom:14px"><label>Prix d\'achat ($)</label><input type="number" id="tax-prix" value="450000" step="1000" oninput="calcTaxes()"/></div>';
+  html += '<div class="form-group" style="margin-bottom:14px"><label>Province</label><select id="tax-province" onchange="calcTaxes()">';
+  var provs = [['QC','Québec'],['ON','Ontario'],['BC','Colombie-Britannique'],['AB','Alberta'],['MB','Manitoba'],['SK','Saskatchewan'],['NS','Nouvelle-Écosse'],['NB','Nouveau-Brunswick'],['PE','Île-du-Prince-Édouard'],['NL','Terre-Neuve']];
+  provs.forEach(function(p){ html += '<option value="'+p[0]+'">'+p[1]+'</option>'; });
+  html += '</select></div>';
+  html += '<div class="form-group"><label>Premier acheteur ?</label>';
+  html += '<select id="tax-premier" onchange="calcTaxes()"><option value="non">Non</option><option value="oui">Oui</option></select></div>';
+  html += '</div>';
+  html += '<div id="tax-resultats"><div class="card" style="padding:18px;text-align:center;color:var(--text3)">Sélectionnez votre province...</div></div>';
+  html += '</div></div>';
+
+  html += '<div id="hyp-sauv" style="display:none">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">';
+  html += '<h3 style="font-size:15px">Mes calculs hypothécaires</h3>';
+  html += '<button class="btn btn-outline btn-sm" onclick="effacerCalcsHyp()" style="color:var(--red)">🗑 Tout effacer</button></div>';
+  var calcs = loadCalcsHyp();
+  if (!calcs.length) {
+    html += '<div class="empty">Aucun calcul sauvegardé. Faites un calcul puis cliquez "Sauvegarder".</div>';
+  } else {
+    calcs.forEach(function(c,idx){
+      html += '<div class="card" style="margin-bottom:10px;padding:14px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
+      html += '<div><div style="font-size:14px;font-weight:600">'+c.label+'</div><div style="font-size:11px;color:var(--text3)">'+c.date+'</div></div>';
+      html += '<button class="btn btn-sm btn-outline" onclick="supprimerCalcHyp('+idx+')">✕</button></div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">';
+      html += '<div><div style="color:var(--text3)">Prix</div><div style="font-weight:600">'+fmtMoney(c.prix)+'</div></div>';
+      html += '<div><div style="color:var(--text3)">Mise de fonds</div><div style="font-weight:600">'+c.misePct+'%</div></div>';
+      html += '<div><div style="color:var(--text3)">Taux</div><div style="font-weight:600">'+c.taux+'%</div></div>';
+      html += '<div><div style="color:var(--text3)">Paiement</div><div style="font-weight:600;color:var(--gold)">'+c.paiement+'</div></div>';
+      html += '<div><div style="color:var(--text3)">Amortissement</div><div style="font-weight:600">'+c.amort+' ans</div></div>';
+      html += '<div><div style="color:var(--text3)">Intérêt total</div><div style="font-weight:600;color:var(--red)">'+fmtMoney(c.interetTotal)+'</div></div>';
+      html += '</div></div>';
+    });
+  }
+  html += '</div>';
+  return html;
+}
+
+var hypCache = {};
+// État persistant du calculateur — survit aux render() via sessionStorage
+var HYP_STATE_KEY = 'familyos_hyp_state';
+var hypState = (function() {
+  try {
+    var saved = sessionStorage.getItem(HYP_STATE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return {
+    prix: 450000, mise: 90000, misePct: 20,
+    taux: 5.14, amort: 25, terme: 5,
+    freq: '12', typeTaux: 'fixe', province: 'QC'
+  };
+})();
+
+function sauverHypState() {
+  var get = function(id){ var el=document.getElementById(id); return el?el.value:null; };
+  // Lire depuis le DOM si les éléments existent
+  if (get('hyp-prix') !== null) {
+    hypState.prix     = parseFloat(get('hyp-prix'))        || hypState.prix;
+    hypState.mise     = parseFloat(get('hyp-mise'))        || hypState.mise;
+    hypState.misePct  = parseFloat(get('hyp-mise-pct'))    || hypState.misePct;
+    hypState.taux     = parseFloat(get('hyp-taux'))        || hypState.taux;
+    hypState.amort    = parseInt(get('hyp-amort-periode')) || hypState.amort;
+    hypState.terme    = parseInt(get('hyp-terme'))         || hypState.terme;
+    hypState.freq     = get('hyp-freq')                    || hypState.freq;
+    hypState.typeTaux = get('hyp-type-taux')               || hypState.typeTaux;
+    hypState.province = get('hyp-province')                || hypState.province;
+  }
+  // Persister dans sessionStorage
+  try { sessionStorage.setItem(HYP_STATE_KEY, JSON.stringify(hypState)); } catch(e) {}
+}
+
+function tauxMensuelCanadien(tauxAnnuel, type) {
+  var r = tauxAnnuel / 100;
+  if (type === 'fixe') { var ear = Math.pow(1+r/2,2)-1; return Math.pow(1+ear,1/12)-1; }
+  return r / 12;
+}
+
+function calcHypotheque() {
+  var prix=parseFloat(document.getElementById('hyp-prix').value)||0;
+  var mise=parseFloat(document.getElementById('hyp-mise').value)||0;
+  var taux=parseFloat(document.getElementById('hyp-taux').value)||0;
+  var amort=parseInt(document.getElementById('hyp-amort-periode').value)||25;
+  var terme=parseInt(document.getElementById('hyp-terme').value)||5;
+  var freqVal=document.getElementById('hyp-freq').value;
+  var typeTaux=document.getElementById('hyp-type-taux').value;
+  var cmhcMsg=document.getElementById('hyp-cmhc-msg');
+  var cmhc=0;
+
+  // ── Règles canadiennes de mise de fonds minimale ──────────────────
+  var miseMin = getMiseMin(prix);
+  var misePctMin = prix > 0 ? (miseMin / prix * 100) : 5;
+
+  // Mettre à jour le min du champ % dynamiquement
+  var pctField = document.getElementById('hyp-mise-pct');
+  if (pctField) pctField.min = misePctMin.toFixed(2);
+  majHintPctMin(prix);
+
+  // Auto-corriger si en dessous du minimum
+  if (mise < miseMin - 0.5) {
+    document.getElementById('hyp-mise').value = Math.round(miseMin);
+    document.getElementById('hyp-mise-pct').value = misePctMin.toFixed(1);
+    mise = miseMin;
+    var infoMin = prix >= 1500000
+      ? '⬆️ Corrigé à 20% min. ('+fmtMoney(miseMin)+') — prix ≥ 1,5M$'
+      : prix > 500000
+        ? '⬆️ Corrigé au min. 5%+10% = '+fmtMoney(miseMin)+' ('+misePctMin.toFixed(1)+'%)'
+        : '⬆️ Corrigé au min. 5% = '+fmtMoney(miseMin);
+    cmhcMsg.innerHTML='<span style="color:var(--blue)">'+infoMin+'</span>';
+  }
+
+  var misePct = prix > 0 ? (mise / prix * 100) : 0;
+  document.getElementById('hyp-mise-pct').value = misePct.toFixed(1);
+
+  // ── Calcul assurance CMHC ─────────────────────────────────────────
+  // CMHC non disponible si prix ≥ 1 500 000$
+  if (prix >= 1500000) {
+    cmhcMsg.innerHTML='<span style="color:var(--green)">✅ Pas d\'assurance CMHC (prix ≥ 1,5M$ — mise min. 20%)</span>';
+  } else if (misePct < 20) {
+    // Taux CMHC basé sur le % de mise de fonds
+    var cr = misePct < 10 ? 0.04 : misePct < 15 ? 0.031 : 0.028;
+    cmhc = (prix - mise) * cr;
+    cmhcMsg.innerHTML='<span style="color:var(--amber)">⚠️ Assurance CMHC : '+fmtMoney(cmhc)+' ('+(cr*100).toFixed(1)+'%) — Mise de '+(misePct.toFixed(1))+'%</span>';
+    if (prix > 500000) {
+      cmhcMsg.innerHTML+='<br><span style="font-size:10px;color:var(--amber)">ℹ️ Mise calculée selon la règle 5%/10% (prix entre 500K$ et 1,5M$)</span>';
+    }
+  } else {
+    cmhcMsg.innerHTML='<span style="color:var(--green)">✅ Pas d\'assurance CMHC requise (mise ≥ 20%)</span>';
+  }
+  var principal=(prix-mise)+cmhc;
+  var acc=freqVal.includes('acc');
+  var freqNum=parseInt(freqVal)||12;
+  var nPaiements=amort*freqNum;
+  var rm=tauxMensuelCanadien(taux,typeTaux);
+  var rp;
+  if(freqNum===12){rp=rm;}
+  else if(freqNum===24){rp=Math.pow(1+rm,0.5)-1;}
+  else if(freqNum===26){rp=acc?rm/2:Math.pow(1+rm,12/26)-1;}
+  else if(freqNum===52){rp=acc?rm/4:Math.pow(1+rm,12/52)-1;}
+  else{rp=rm;}
+  var paiement;
+  if(acc){var pmM=principal*rm/(1-Math.pow(1+rm,-amort*12));paiement=freqNum===26?pmM/2:pmM/4;}
+  else{paiement=rp===0?principal/nPaiements:principal*rp/(1-Math.pow(1+rp,-nPaiements));}
+  var totalPaye=paiement*nPaiements;
+  var interetTotal=totalPaye-principal;
+  var nTerme=terme*freqNum;
+  var soldeTerme=principal*Math.pow(1+rp,nTerme)-paiement*(Math.pow(1+rp,nTerme)-1)/rp;
+  var freqLabels={'12':'mensuel','24':'bimensuel','26':'bihebdomadaire','26acc':'bihebdomadaire accéléré','52':'hebdomadaire','52acc':'hebdomadaire accéléré'};
+  var freqLabel=freqLabels[freqVal]||'mensuel';
+  hypCache={prix:prix,mise:mise,misePct:misePct,taux:taux,amort:amort,terme:terme,freqVal:freqVal,freqNum:freqNum,acc:acc,typeTaux:typeTaux,principal:principal,paiement:paiement,rp:rp,interetTotal:interetTotal,totalPaye:totalPaye,soldeTerme:soldeTerme,nPaiements:nPaiements,freqLabel:freqLabel,cmhc:cmhc};
+  var barP=Math.round((principal/totalPaye)*100); var barI=100-barP;
+  var res='';
+  res+='<div class="card" style="padding:18px;margin-bottom:12px;border-top:3px solid var(--gold)">';
+  res+='<div style="font-size:12px;color:var(--text3);margin-bottom:4px">Paiement '+freqLabel.toUpperCase()+'</div>';
+  res+='<div style="font-size:32px;font-weight:700;color:var(--gold)">'+fmtMoney(paiement)+'</div>';
+  res+='<div style="font-size:12px;color:var(--text3);margin-top:4px">'+typeTaux+' · '+taux+'% · '+amort+' ans d\'amortissement</div></div>';
+  res+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">';
+  res+=kpiHyp('🏦 Montant emprunté',fmtMoney(prix-mise),'');
+  if(cmhc>0) res+=kpiHyp('🛡 Assurance CMHC',fmtMoney(cmhc),'var(--amber)');
+  res+=kpiHyp('💰 Total emprunté',fmtMoney(principal),'');
+  res+=kpiHyp('📅 Solde fin de terme ('+terme+' ans)',fmtMoney(Math.max(0,soldeTerme)),'var(--blue)');
+  res+=kpiHyp('💸 Intérêts totaux',fmtMoney(interetTotal),'var(--red)');
+  res+=kpiHyp('📊 Coût total du prêt',fmtMoney(totalPaye),'');
+  res+='</div>';
+  res+='<div class="card" style="padding:14px;margin-bottom:12px">';
+  res+='<div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:8px">RÉPARTITION CAPITAL / INTÉRÊTS</div>';
+  res+='<div style="display:flex;border-radius:8px;overflow:hidden;height:24px;margin-bottom:8px">';
+  res+='<div style="width:'+barP+'%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:600">'+barP+'% capital</div>';
+  res+='<div style="width:'+barI+'%;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:600">'+barI+'% intérêt</div>';
+  res+='</div>';
+  res+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)"><span>● Capital : '+fmtMoney(prix-mise)+'</span><span>● Intérêts : '+fmtMoney(interetTotal)+'</span></div>';
+  res+='</div>';
+  // ── ACOMPTE REQUIS (modèle REALTOR.ca) ──────────────────────────
+  // TVP/PST sur assurance CMHC selon province
+  var provEl = document.getElementById('hyp-province');
+  var prov = provEl ? provEl.value : 'QC';
+  var tvpTaux = {QC:0.09,ON:0.08,MB:0.08,SK:0.06};
+  var tvp = cmhc > 0 ? cmhc * (tvpTaux[prov] || 0) : 0;
+  // Taxe de bienvenue estimée (calcul simplifié)
+  var txBv = 0;
+  if(prov==='QC'||prov==='ON'){
+    var paliers=prov==='QC'?[[0,55200,0.005],[55200,276200,0.01],[276200,552300,0.015],[552300,1104700,0.02],[1104700,null,0.025]]:[[0,55000,0.005],[55000,250000,0.01],[250000,400000,0.015],[400000,2000000,0.02],[2000000,null,0.025]];
+    paliers.forEach(function(p){if(prix>p[0]){txBv+=( Math.min(prix,p[1]!==null?p[1]:prix)-p[0])*p[2];}});
+  } else if(prov==='BC'){
+    [[0,200000,0.01],[200000,2000000,0.02],[2000000,3000000,0.03],[3000000,null,0.05]].forEach(function(p){if(prix>p[0]){txBv+=(Math.min(prix,p[1]!==null?p[1]:prix)-p[0])*p[2];}});
+  } else { txBv = prix * 0.01; }
+  var fraisJurid   = 1500;
+  var titreAssur   = 300;
+  var inspection   = 500;
+  var evaluation   = 400;
+  var totalAcompte = mise + txBv + tvp + fraisJurid + titreAssur + inspection + evaluation;
+  var ligneAcompte = function(label, val, couleur, note) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border)">'
+      +'<div><span style="font-size:13px;color:var(--text2)">'+label+'</span>'+(note?'<span style="font-size:10px;color:var(--text3);margin-left:6px">'+note+'</span>':'')+'</div>'
+      +'<span style="font-size:13px;font-weight:600;color:'+(couleur||'var(--text)')+'">'+fmtMoney(val)+'</span></div>';
+  };
+  res+='<div class="card" style="padding:14px;margin-bottom:12px;border-top:3px solid var(--purple)">';
+  res+='<div style="font-size:12px;font-weight:600;color:var(--purple);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">💼 Acompte requis à la clôture</div>';
+  res+=ligneAcompte('Mise de fonds hypothécaire', mise, 'var(--gold)');
+  res+=ligneAcompte('Taxe de bienvenue / Droits de mutation', txBv, '', '('+prov+' estimée)');
+  if(tvp>0) res+=ligneAcompte('TVP sur l\'assurance hypothécaire', tvp, 'var(--amber)', '('+( tvpTaux[prov]*100)+'% sur CMHC)');
+  res+=ligneAcompte('Frais juridiques (notaire/avocat)', fraisJurid, '', '(estimation)');
+  res+=ligneAcompte('Titre d\'assurance', titreAssur, '', '(estimation)');
+  res+=ligneAcompte('Frais d\'inspection immobilière', inspection, '', '(estimation)');
+  res+=ligneAcompte('Frais d\'évaluation', evaluation, '', '(estimation)');
+  res+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;margin-top:4px">';
+  res+='<span style="font-size:14px;font-weight:700;color:var(--text)">ACOMPTE TOTAL REQUIS</span>';
+  res+='<span style="font-size:18px;font-weight:700;color:var(--purple)">'+fmtMoney(totalAcompte)+'</span></div>';
+  res+='<div style="font-size:11px;color:var(--text3);margin-top:4px">⚠️ Les frais réels peuvent varier. Consultez un courtier hypothécaire pour un calcul précis.</div>';
+  res+='</div>';
+
+  // ── FRAIS MENSUELS DE POSSESSION ──────────────────────────────────
+  // Impôt foncier estimé (~1% du prix par an au Canada)
+  var impotFoncierMensuel = prix * 0.01 / 12;
+  res+='<div class="card" style="padding:14px;margin-bottom:12px;border-top:3px solid var(--green)">';
+  res+='<div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">📆 Frais mensuels de possession</div>';
+  res+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Modifiez les valeurs selon votre situation réelle :</div>';
+  // Champ calculé automatiquement (lecture seule, fond différent)
+  var champCalc = function(id, label, val, note) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--border)">'
+      +'<div><span style="font-size:12px;color:var(--text2)">'+label+'</span>'+(note?'<span style="font-size:10px;color:var(--gold);margin-left:4px">'+note+'</span>':'')+'</div>'
+      +'<div style="display:flex;align-items:center;gap:4px">'
+      +'<span style="font-size:12px;color:var(--text3)">$</span>'
+      +'<input type="number" id="fm-'+id+'" value="'+Math.round(val)+'" min="0" step="10" onchange="majFraisMensuels()" style="width:90px;padding:3px 8px;font-size:13px;font-weight:600;text-align:right;border-radius:6px;border:1px solid var(--gold);background:rgba(212,168,67,.08);color:var(--gold)"/>'
+      +'</div></div>';
+  };
+  // Champ manuel — vide, à renseigner par l'utilisateur
+  var champManuel = function(id, label, placeholder) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--border)">'
+      +'<div><span style="font-size:12px;color:var(--text2)">'+label+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:4px">'
+      +'<span style="font-size:12px;color:var(--text3)">$</span>'
+      +'<input type="number" id="fm-'+id+'" value="" min="0" step="5" placeholder="'+(placeholder||'0')+'" onchange="majFraisMensuels()" oninput="majFraisMensuels()" style="width:90px;padding:3px 8px;font-size:13px;font-weight:600;text-align:right;border-radius:6px;border:1px solid var(--border);background:var(--navy4);color:var(--text)"/>'
+      +'</div></div>';
+  };
+
+  res+=champCalc('hypotheque', 'Versement hypothécaire', paiement * (freqNum===12?1:freqNum===24?2:freqNum===26||freqVal==='26acc'?26/12:52/12), '⚙ calculé');
+  res+=champCalc('impot', 'Impôt foncier', impotFoncierMensuel, '⚙ ~1%/an estimé');
+  res+=champCalc('dettes', 'Versements mensuels des dettes', 0, '⚙ à modifier');
+  res+='<div style="font-size:10px;color:var(--text3);padding:4px 0 6px">✏️ Saisissez vos frais réels :</div>';
+  res+=champManuel('energie',   'Électricité, chauffage, etc.');
+  res+=champManuel('assurance', 'Assurance habitation');
+  res+=champManuel('telephone', 'Téléphone');
+  res+=champManuel('cable',     'Câble');
+  res+=champManuel('internet',  'Internet');
+  res+=champManuel('condo',     'Frais de condo / charges copropriété');
+  res+='<div id="fm-total-row" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;margin-top:4px">';
+  res+='<span style="font-size:14px;font-weight:700;color:var(--text)">FRAIS MENSUELS TOTAUX</span>';
+  res+='<span id="fm-total" style="font-size:18px;font-weight:700;color:var(--green)"></span></div>';
+  res+='<div style="font-size:11px;color:var(--text3)">💡 Revenu brut recommandé pour qualifier : <strong id="fm-revenu" style="color:var(--gold)"></strong>/mois (ratio ABD ≤ 32%)</div>';
+  res+='</div>';
+
+  if(!acc) res+='<div style="font-size:12px;color:var(--purple);background:rgba(154,106,218,.1);padding:8px 12px;border-radius:8px">💡 Avec le mode bihebdomadaire <strong>accéléré</strong>, vous économiseriez ~'+fmtMoney(interetTotal*0.12)+' en intérêts.</div>';
+  document.getElementById('hyp-resultats').innerHTML=res;
+  majFraisMensuels();
+}
+
+function kpiHyp(label,valeur,couleur){
+  return '<div style="background:var(--navy3);border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">'+label+'</div><div style="font-size:14px;font-weight:600;color:'+(couleur||'var(--text)')+'">'+valeur+'</div></div>';
+}
+
+function majFraisMensuels() {
+  var ids = ['hypotheque','impot','dettes','energie','assurance','telephone','cable','internet','condo'];
+  var total = 0;
+  ids.forEach(function(id) {
+    var el = document.getElementById('fm-'+id);
+    total += el ? (parseFloat(el.value)||0) : 0;
+  });
+  var totalEl = document.getElementById('fm-total');
+  var revenuEl = document.getElementById('fm-revenu');
+  if (totalEl) totalEl.textContent = '$' + Math.round(total).toLocaleString('fr-CA');
+  // Ratio ABD (Amortissement Brut de la Dette) ≤ 32% recommandé par CMHC
+  // Versements logement seuls / revenu brut ≤ 32%
+  var hypEl = document.getElementById('fm-hypotheque');
+  var impotEl = document.getElementById('fm-impot');
+  var assurEl = document.getElementById('fm-assurance');
+  var fraisLogement = (hypEl?parseFloat(hypEl.value)||0:0) + (impotEl?parseFloat(impotEl.value)||0:0) + (assurEl?parseFloat(assurEl.value)||0:0);
+  var revenuMinABD = fraisLogement > 0 ? fraisLogement / 0.32 : 0;
+  // Ratio ATD (Amortissement Total de la Dette) ≤ 44%
+  var revenuMinATD = total > 0 ? total / 0.44 : 0;
+  var revenuMin = Math.max(revenuMinABD, revenuMinATD);
+  if (revenuEl) revenuEl.textContent = revenuMin > 0 ? '$'+Math.round(revenuMin).toLocaleString('fr-CA') : '—';
+}
+function getMiseMin(prix) {
+  if (prix <= 500000) return prix * 0.05;
+  if (prix < 1500000) return 500000 * 0.05 + (prix - 500000) * 0.10;
+  return prix * 0.20;
+}
+
+function getMiseMin(prix) {
+  if (prix <= 500000) return prix * 0.05;
+  if (prix < 1500000) return 500000 * 0.05 + (prix - 500000) * 0.10;
+  return prix * 0.20;
+}
+
+// Changement du montant $ → recalcule le %
+function syncMisePct() {
+  var p = parseFloat(document.getElementById('hyp-prix').value) || 0;
+  var m = parseFloat(document.getElementById('hyp-mise').value) || 0;
+  var pct = p > 0 ? (m / p * 100) : 0;
+  document.getElementById('hyp-mise-pct').value = pct.toFixed(2);
+  majHintPctMin(p);
+  calcHypotheque();
+}
+
+// Frappe libre dans le champ % → met à jour $ en temps réel sans bloquer
+function syncMiseMontant() {
+  var p = parseFloat(document.getElementById('hyp-prix').value) || 0;
+  var pc = parseFloat(document.getElementById('hyp-mise-pct').value) || 0;
+  if (p > 0 && pc > 0) {
+    document.getElementById('hyp-mise').value = Math.round(p * pc / 100);
+  }
+  calcHypotheque();
+}
+
+// Met à jour le hint et le min du champ %
+function majHintPctMin(prix) {
+  var miseMin = getMiseMin(prix);
+  var pctMin = prix > 0 ? (miseMin / prix * 100) : 5;
+  var pctField = document.getElementById('hyp-mise-pct');
+  var hint = document.getElementById('hyp-pct-hint');
+  if (pctField) pctField.min = pctMin.toFixed(2);
+  if (hint) {
+    var regle = prix >= 1500000
+      ? 'Prix ≥ 1,5M$ — min. 20%'
+      : prix > 500000
+        ? 'Règle 5%+10% — min. '+pctMin.toFixed(2)+'% ('+fmtMoney(miseMin)+')'
+        : 'Min. 5% — '+fmtMoney(miseMin);
+    hint.textContent = '📌 Minimum requis : '+pctMin.toFixed(2)+'%  |  '+regle;
+  }
+}
+
+// Validation au blur (quand on quitte le champ %) → refuse si < minimum
+function validerPctMise() {
+  var p = parseFloat(document.getElementById('hyp-prix').value) || 0;
+  var pc = parseFloat(document.getElementById('hyp-mise-pct').value) || 0;
+  var miseMin = getMiseMin(p);
+  var pctMin = p > 0 ? (miseMin / p * 100) : 5;
+  var cmhcMsg = document.getElementById('hyp-cmhc-msg');
+  var pctEl = document.getElementById('hyp-mise-pct');
+
+  if (pc < pctMin - 0.001) {
+    // Corriger au minimum et signaler visuellement
+    pctEl.value = pctMin.toFixed(2);
+    document.getElementById('hyp-mise').value = Math.round(miseMin);
+
+    var msgErr = p >= 1500000
+      ? '❌ Minimum requis : 20% ('+fmtMoney(miseMin)+') — prix ≥ 1,5M$. Valeur corrigée.'
+      : p > 500000
+        ? '❌ Minimum requis : '+pctMin.toFixed(2)+'% = '+fmtMoney(miseMin)+' (règle 5%+10%). Valeur corrigée.'
+        : '❌ Minimum requis : 5% = '+fmtMoney(miseMin)+'. Valeur corrigée.';
+    if (cmhcMsg) cmhcMsg.innerHTML = '<span style="color:var(--red)">'+msgErr+'</span>';
+
+    // Flash rouge sur le champ
+    pctEl.style.borderColor = 'var(--red)';
+    pctEl.style.background = 'rgba(224,85,85,.12)';
+    setTimeout(function() {
+      pctEl.style.borderColor = '';
+      pctEl.style.background = '';
+    }, 2500);
+  }
+  calcHypotheque();
+}
+
+function genererTableauAmort(){
+  if(!hypCache.principal){document.getElementById('hyp-amort-table').innerHTML='<div class="empty">Calculez d\'abord dans l\'onglet Calculateur.</div>';return;}
+  var c=hypCache;var solde=c.principal,tInt=0,tPrinc=0;
+  var rows='';
+  for(var an=1;an<=c.amort;an++){
+    var iA=0,pA=0;
+    for(var p=0;p<c.freqNum;p++){if(solde<=0)break;var ip=solde*c.rp,pp=Math.min(c.paiement-ip,solde);if(pp<0)pp=0;iA+=ip;pA+=pp;solde-=pp;if(solde<0.01)solde=0;}
+    tInt+=iA;tPrinc+=pA;
+    var isT=an===c.terme;
+    rows+='<tr style="'+(isT?'background:rgba(212,168,67,.08);font-weight:600':'')+'"><td style="color:'+(isT?'var(--gold)':'var(--text2)')+'">'+an+(isT?' ★':'')+'</td>';
+    rows+='<td style="color:var(--green)">'+fmtMoney(pA)+'</td><td style="color:var(--red)">'+fmtMoney(iA)+'</td>';
+    rows+='<td>'+fmtMoney(c.paiement*c.freqNum)+'</td><td style="color:'+(isT?'var(--gold)':'')+'">'+fmtMoney(Math.max(0,solde))+'</td>';
+    rows+='<td>'+(isT?'<span class="badge badge-gold" style="font-size:10px">Fin du terme</span>':'')+'</td></tr>';
+    if(solde<=0)break;
+  }
+  var html='<div class="table-wrap"><table>';
+  html+='<tr><th>Année</th><th>Capital remboursé</th><th>Intérêts payés</th><th>Total annuel</th><th>Solde restant</th><th></th></tr>';
+  html+=rows;
+  html+='<tr style="background:var(--navy3);font-weight:700"><td>TOTAL</td><td style="color:var(--green)">'+fmtMoney(tPrinc)+'</td><td style="color:var(--red)">'+fmtMoney(tInt)+'</td><td>'+fmtMoney(tPrinc+tInt)+'</td><td>—</td><td></td></tr>';
+  html+='</table></div>';
+  document.getElementById('hyp-amort-table').innerHTML=html;
+}
+
+function calcTaxes(){
+  var prix=parseFloat(document.getElementById('tax-prix').value)||0;
+  var province=document.getElementById('tax-province').value;
+  var premier=document.getElementById('tax-premier').value==='oui';
+  var taxe=0,remboursement=0,details=[];
+  function tr(base,paliers){var t=0;paliers.forEach(function(p){if(base>p[0]){var m=Math.min(base,p[1]!==null?p[1]:base)-p[0];t+=m*p[2];details.push({de:p[0],a:p[1],taux:p[2]*100,montant:m*p[2]});}});return t;}
+  if(province==='QC'){taxe=tr(prix,[[0,55200,0.005],[55200,276200,0.01],[276200,552300,0.015],[552300,1104700,0.02],[1104700,null,0.025]]);if(premier)remboursement=Math.min(taxe,5000);}
+  else if(province==='ON'){taxe=tr(prix,[[0,55000,0.005],[55000,250000,0.01],[250000,400000,0.015],[400000,2000000,0.02],[2000000,null,0.025]]);if(premier)remboursement=Math.min(taxe,4000);}
+  else if(province==='BC'){taxe=tr(prix,[[0,200000,0.01],[200000,2000000,0.02],[2000000,3000000,0.03],[3000000,null,0.05]]);if(premier&&prix<=835000)remboursement=prix<=500000?taxe:taxe*(835000-prix)/335000;}
+  else if(province==='AB'){taxe=Math.max(50,Math.ceil(prix/5000)*5)*10/1000;details.push({de:0,a:null,taux:0,montant:taxe,label:'Frais d\'enregistrement'});}
+  else if(province==='MB'){taxe=tr(prix,[[0,30000,0],[30000,90000,0.005],[90000,150000,0.01],[150000,200000,0.015],[200000,null,0.02]]);}
+  else if(province==='SK'){taxe=prix*0.003;details.push({de:0,a:null,taux:0.3,montant:taxe});}
+  else if(province==='NS'){taxe=prix*0.015;details.push({de:0,a:null,taux:1.5,montant:taxe});}
+  else if(province==='NB'){taxe=prix*0.01;details.push({de:0,a:null,taux:1.0,montant:taxe});}
+  else if(province==='PE'){taxe=prix*0.01;details.push({de:0,a:null,taux:1.0,montant:taxe});}
+  else if(province==='NL'){taxe=tr(prix,[[0,500,0.004],[500,1000,0.008],[1000,null,0.016]]);}
+  var net=Math.max(0,taxe-remboursement);
+  var provNames={'QC':'Québec','ON':'Ontario','BC':'Colombie-Britannique','AB':'Alberta','MB':'Manitoba','SK':'Saskatchewan','NS':'Nouvelle-Écosse','NB':'Nouveau-Brunswick','PE':'Île-du-Prince-Édouard','NL':'Terre-Neuve'};
+  var html='<div class="card" style="padding:18px">';
+  html+='<div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px">'+provNames[province]+'</div>';
+  html+='<div style="font-size:28px;font-weight:700;color:var(--red);margin-bottom:4px">'+fmtMoney(net)+'</div>';
+  html+='<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Droits de mutation nets</div>';
+  if(details.length&&province!=='AB'&&province!=='SK'&&province!=='NS'&&province!=='NB'&&province!=='PE'){
+    html+='<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px">PAR TRANCHE :</div>';
+    details.forEach(function(d){if(d.montant>0)html+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:0.5px solid var(--border)"><span style="color:var(--text3)">'+(d.a?fmtMoney(d.de)+' → '+fmtMoney(d.a):'Au-delà de '+fmtMoney(d.de))+' ('+d.taux.toFixed(1)+'%)</span><span style="font-weight:600">'+fmtMoney(d.montant)+'</span></div>';});
+  }
+  if(remboursement>0)html+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;color:var(--green)"><span>🎁 Remboursement premier acheteur</span><span style="font-weight:600">-'+fmtMoney(remboursement)+'</span></div>';
+  html+='<hr style="border:none;border-top:1px solid var(--border);margin:8px 0"/>';
+  html+='<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>TOTAL NET</span><span style="color:var(--red)">'+fmtMoney(net)+'</span></div>';
+  var inspection=500,notaire=1500,ajust=prix*0.003;
+  html+='<div style="margin-top:12px;background:var(--navy3);border-radius:8px;padding:10px 12px">';
+  html+='<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px">AUTRES FRAIS DE CLÔTURE ESTIMÉS</div>';
+  html+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text3)">Inspection préachat</span><span>~'+fmtMoney(inspection)+'</span></div>';
+  html+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text3)">Notaire / Frais juridiques</span><span>~'+fmtMoney(notaire)+'</span></div>';
+  html+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text3)">Ajustements de taxes</span><span>~'+fmtMoney(ajust)+'</span></div>';
+  html+='<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:6px 0;border-top:0.5px solid var(--border);margin-top:4px"><span>Total estimé (clôture)</span><span style="color:var(--amber)">~'+fmtMoney(net+inspection+notaire+ajust)+'</span></div>';
+  html+='</div></div>';
+  document.getElementById('tax-resultats').innerHTML=html;
+}
+
+var HYP_SAVE_KEY='familyos_hyp_calcs_v1';
+function loadCalcsHyp(){try{return JSON.parse(localStorage.getItem(HYP_SAVE_KEY))||[];}catch(e){return[];}}
+function saveCalcsHyp(d){localStorage.setItem(HYP_SAVE_KEY,JSON.stringify(d));}
+function sauvegarderCalcHyp(){
+  if(!hypCache.principal)return toast('Faites d\'abord un calcul','var(--red2)');
+  var c=hypCache;var label=prompt('Nom de ce calcul :','Maison '+fmtMoney(c.prix));
+  if(!label)return;
+  var calcs=loadCalcsHyp();
+  calcs.unshift({label:label,date:new Date().toLocaleDateString('fr-CA'),prix:c.prix,mise:c.mise,misePct:Math.round(c.misePct*10)/10,taux:c.taux,amort:c.amort,terme:c.terme,paiement:fmtMoney(c.paiement)+' / '+c.freqLabel,interetTotal:c.interetTotal,totalPaye:c.totalPaye});
+  if(calcs.length>20)calcs=calcs.slice(0,20);
+  saveCalcsHyp(calcs);toast('Calcul sauvegardé ✓');
+}
+function supprimerCalcHyp(idx){var c=loadCalcsHyp();c.splice(idx,1);saveCalcsHyp(c);render();toast('Supprimé','var(--red2)');}
+function effacerCalcsHyp(){if(!confirm('Effacer tous les calculs ?'))return;saveCalcsHyp([]);render();toast('Effacé ✓');}
+function imprimerAmortissement(){
+  if(!hypCache.principal)return toast('Aucun calcul à imprimer','var(--amber)');
+  var c=hypCache;var win=window.open('','_blank','width=800,height=900');
+  if(!win)return toast('Autorisez les popups','var(--amber)');
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Amortissement FamilyOS</title><style>body{font-family:Arial,sans-serif;max-width:720px;margin:30px auto;color:#1A1A2E}h1{color:#D4A843;border-bottom:2px solid #D4A843;padding-bottom:8px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#1E3A5F;color:#D4A843;padding:8px}td{padding:7px 8px;border-bottom:1px solid #eee}tr.t{background:#fff8e1;font-weight:700}.g{color:#1A7A4A}.r{color:#A32D2D}@media print{button{display:none}}</style></head><body>';
+  html+='<h1>🏡 Tableau d\'amortissement — FamilyOS</h1>';
+  html+='<p><strong>Prix :</strong> '+fmtMoney(c.prix)+' | <strong>Mise :</strong> '+c.misePct.toFixed(1)+'% | <strong>Taux :</strong> '+c.taux+'% '+c.typeTaux+' | <strong>Amortissement :</strong> '+c.amort+' ans</p>';
+  html+='<p><strong>Paiement '+c.freqLabel+' :</strong> '+fmtMoney(c.paiement)+'</p>';
+  html+='<button onclick="window.print()" style="padding:8px 20px;background:#D4A843;color:#1A1A2E;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px">🖨 Imprimer</button>';
+  html+='<table><tr><th>Année</th><th>Capital remboursé</th><th>Intérêts payés</th><th>Total annuel</th><th>Solde restant</th></tr>';
+  var solde=c.principal,tI=0,tP=0;
+  for(var an=1;an<=c.amort;an++){var iA=0,pA=0;for(var p=0;p<c.freqNum;p++){if(solde<=0)break;var ip=solde*c.rp,pp=Math.min(c.paiement-ip,solde);if(pp<0)pp=0;iA+=ip;pA+=pp;solde-=pp;if(solde<0.01)solde=0;}tI+=iA;tP+=pA;html+='<tr class="'+(an===c.terme?'t':'')+'"><td>'+an+(an===c.terme?' ★':'')+'</td><td class="g">'+fmtMoney(pA)+'</td><td class="r">'+fmtMoney(iA)+'</td><td>'+fmtMoney(c.paiement*c.freqNum)+'</td><td>'+fmtMoney(Math.max(0,solde))+'</td></tr>';if(solde<=0)break;}
+  html+='<tr style="font-weight:700;background:#f5f0ff"><td>TOTAL</td><td class="g">'+fmtMoney(tP)+'</td><td class="r">'+fmtMoney(tI)+'</td><td>'+fmtMoney(tP+tI)+'</td><td>—</td></tr></table>';
+  html+='<p style="font-size:11px;color:#888;margin-top:16px">★ = Fin du terme '+c.terme+' an(s). Généré par FamilyOS · '+new Date().toLocaleDateString('fr-CA')+'</p></body></html>';
+  win.document.write(html);win.document.close();
+}
 
 appliquerTheme();
 var _session = getSession();
